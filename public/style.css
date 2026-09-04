@@ -1,0 +1,411 @@
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0a0a0c;--bg2:#121216;--bg3:#1a1a20;--line:#2a2a33;
+  --gold:#d4af37;--white:#e8e6e0;--dim:#8b8b96;
+  --green:#3ecf8e;--red:#ff5364;--heat:#ff8c42;--blk:#a06cd5;--inf:#4ba3ff;
+}
+html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--white);
+  font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
+body{display:flex;flex-direction:column}
+.hidden{display:none!important}
+
+/* GATE */
+.gate{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at 50% 0%,#1c1c26 0%,#0a0a0c 70%);padding:24px}
+.gate-box{width:100%;max-width:400px;text-align:center;position:relative}
+.langsw{position:absolute;top:-8px;right:0;display:flex;gap:4px;background:var(--bg2);
+  border:1px solid var(--line);border-radius:8px;padding:3px}
+.langsw .lg{background:none;border:none;color:var(--dim);padding:4px 10px;border-radius:6px;
+  font-size:12px;font-weight:700;cursor:pointer}
+.langsw .lg.active{background:var(--gold);color:#141410}
+.logo{font-size:34px;font-weight:900;letter-spacing:3px;color:var(--gold);line-height:1}
+.logo span{display:block;color:var(--white);font-size:34px}
+.tag{color:var(--dim);margin:14px 0 18px;font-size:14px}
+.ticker-preview{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px;
+  font-size:12px;color:var(--dim);margin-bottom:18px;min-height:44px;text-align:left;font-variant-numeric:tabular-nums}
+.ticker-preview b{color:var(--white)}
+input{width:100%;padding:14px;border-radius:10px;border:1px solid var(--line);background:var(--bg2);
+  color:var(--white);font-size:16px;margin-bottom:12px;outline:none}
+input:focus{border-color:var(--gold)}
+.btn{border:1px solid var(--line);background:var(--bg3);color:var(--white);padding:11px 14px;
+  border-radius:10px;font-size:14px;font-weight:600;cursor:pointer}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--gold);color:#141410;border-color:var(--gold)}
+.btn.big{width:100%;padding:15px;font-size:16px}
+.btn:disabled{opacity:.4}
+.btn.danger{border-color:#5a2630;background:#2a1218;color:#ff9aa5}
+.fine{color:#5a5a66;font-size:11px;margin-top:16px}
+#gateMenu .btn{margin-bottom:8px}
+.room-box{margin-bottom:10px}
+.rooms-list{margin-top:10px;max-height:180px;overflow-y:auto;text-align:left}
+.room-item{display:flex;align-items:center;justify-content:space-between;gap:8px;
+  background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:6px;
+  cursor:pointer;font-size:13px}
+.room-item:active{background:var(--bg3)}
+.room-item .rname{font-weight:700;color:var(--white)}
+.room-item .rmeta{color:var(--dim);font-size:11px}
+.room-item .rjoin{color:var(--gold);font-weight:700;font-size:12px}
+.roomlink-box{display:flex;gap:6px;margin-bottom:14px}
+.roomlink-box input{flex:1;margin-bottom:0;font-size:12px}
+.roomlink-box button{flex:none;padding:11px 12px}
+
+/* TOP HUD */
+.app{display:flex;flex-direction:column;height:100%;overflow:hidden}
+.top{background:linear-gradient(#141419,#0e0e12);border-bottom:1px solid var(--line);
+  padding:calc(env(safe-area-inset-top) + 6px) 8px 6px;flex:none}
+.hud{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.hudcell{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:5px 6px;text-align:center;overflow:hidden}
+.hl{display:block;font-size:8px;letter-spacing:.7px;color:var(--dim)}
+.hudcell b{font-size:14px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hudcell.black b{color:var(--blk)} .hudcell.inf b{color:var(--inf)} .hudcell.heat b{color:var(--heat)}
+.topbar2{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:6px;font-size:12px;color:var(--dim)}
+.brand-l,.brand-r{font-weight:900;letter-spacing:1px;color:var(--gold);font-size:12px;flex:none}
+.brand-r{color:var(--white)}
+.brand-r sup{font-size:7px;color:var(--gold)}
+.topbar2 b{color:var(--white)}
+.tb2-left,.tb2-right{display:flex;align-items:center;gap:6px}
+.brand-l,.brand-r{font-weight:900;letter-spacing:1.5px;color:var(--gold);font-size:11px}
+.brand-r{color:var(--white)}
+.brand-r sup{font-size:7px;color:var(--gold)}
+.timer{font-variant-numeric:tabular-nums;color:var(--gold)}
+.ap{letter-spacing:2px;color:var(--gold);font-size:15px}
+.rules-link{color:var(--dim);text-decoration:none;font-size:15px}
+.alert{margin-top:6px;background:#2a1216;border:1px solid #5a2630;color:#ff9aa5;
+  border-radius:8px;padding:6px 8px;font-size:12px;font-weight:600}
+
+/* TICKER */
+.ticker{flex:none;overflow:hidden;background:#07070a;border-bottom:1px solid var(--line);height:26px;position:relative}
+.tick-inner{position:absolute;white-space:nowrap;will-change:transform;animation:sc 42s linear infinite;
+  font-size:11.5px;line-height:26px;font-variant-numeric:tabular-nums}
+@keyframes sc{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.tick-inner span{padding:0 12px;color:var(--dim)}
+.tick-inner b{color:var(--white)}
+.up{color:var(--green)!important}.down{color:var(--red)!important}
+
+/* MAIN */
+main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 8px 16px}
+.tab{display:none}.tab.active{display:block}
+
+/* ZONE CARDS */
+.zone{background:var(--bg2);border:1px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden}
+.zhead{display:flex;align-items:center;gap:8px;padding:10px 11px;background:var(--bg3);cursor:pointer}
+.zflag{font-size:20px}
+.zname{flex:1;font-weight:700;font-size:14px}
+.zmeta{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.pill{font-size:9.5px;padding:2px 6px;border-radius:20px;background:#23232c;color:var(--dim);white-space:nowrap}
+.pill.war{background:#3a1418;color:#ff8a95}
+.pill.unrest{background:#3a2a10;color:#ffc46b}
+.pill.wx{background:#132a3a;color:#7cc6ff}
+.pill.mayor{background:#2a1a3a;color:#c99bff}
+.zbody{padding:6px 8px 9px}
+
+.asset{display:flex;align-items:center;gap:9px;padding:8px 7px;border-radius:9px;margin-bottom:5px;
+  background:#0f0f14;border:1px solid #202028;cursor:pointer}
+.asset:active{background:#16161d}
+.aico{font-size:20px;width:26px;text-align:center;flex:none}
+.ainfo{flex:1;min-width:0}
+.aname{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.asub{font-size:10.5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.aright{text-align:right;flex:none}
+.aval{font-size:12px;font-variant-numeric:tabular-nums}
+.ainc{font-size:11px;font-variant-numeric:tabular-nums}
+.owned{border-color:#3a5f42;background:#0d1710}
+.rival{border-color:#5a2630;background:#170d10}
+.kind{display:inline-block;font-size:8.5px;padding:1px 4px;border-radius:4px;margin-left:4px;vertical-align:1px}
+.k-legal{background:#14301f;color:#6ee7a0}.k-grey{background:#332a10;color:#ffd479}.k-crime{background:#331018;color:#ff8a95}
+.frozen{opacity:.55}
+
+/* SCHEMES */
+.sec-title{font-size:11px;letter-spacing:1.2px;color:var(--dim);margin:14px 2px 7px;font-weight:700}
+.scheme{display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--line);
+  border-radius:10px;padding:10px;margin-bottom:7px;cursor:pointer}
+.scheme:active{background:var(--bg3)}
+.sico{font-size:20px;width:26px;text-align:center;flex:none}
+.sinfo{flex:1;min-width:0}
+.stitle{font-size:13.5px;font-weight:600}
+.sdesc{font-size:10.5px;color:var(--dim);line-height:1.3}
+.scost{font-size:10px;text-align:right;flex:none;color:var(--dim);white-space:nowrap}
+.scost em{display:block;font-style:normal;color:var(--heat)}
+
+/* CASE */
+.case{background:#1a1013;border:1px solid #5a2630;border-radius:12px;padding:12px;margin-bottom:12px}
+.case h3{margin:0 0 6px;font-size:14px;color:#ff9aa5}
+.bar{height:6px;background:#26262e;border-radius:6px;overflow:hidden;margin:7px 0}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--heat),var(--red))}
+
+/* NEWS */
+.news{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:7px}
+.nhead{font-size:12.5px;line-height:1.35;margin-bottom:5px}
+.nhead a{color:var(--white);text-decoration:none}
+.nmeta{font-size:10px;color:var(--dim)}
+.tagx{font-size:9px;padding:1px 5px;border-radius:4px;margin-right:4px}
+.t-war{background:#3a1418;color:#ff8a95}.t-unrest{background:#3a2a10;color:#ffc46b}.t-crime{background:#2a1a3a;color:#c99bff}
+
+/* LOG */
+.logline{font-size:14px;color:#c7c7d0;padding:8px 10px;border-left:3px solid var(--line);margin-bottom:6px;line-height:1.45;border-radius:0 6px 6px 0;background:rgba(255,255,255,.015)}
+.logline.mineline{background:#141d18;border-left-color:var(--gold);font-weight:600}
+.logline.corrupt{border-color:var(--blk);color:#d3b3ff}
+.logline.attack{border-color:var(--red);color:#ffaab3}
+.logline.law{border-color:var(--heat);color:#ffc79a}
+.logline.world{border-color:var(--inf);color:#9dcbff}
+.logline.buy{border-color:var(--green);color:#95e5bd}
+.logline.win{border-color:var(--gold);color:var(--gold);font-weight:700}
+
+/* RANK */
+.prow{display:flex;align-items:center;gap:9px;background:var(--bg2);border:1px solid var(--line);
+  border-radius:10px;padding:9px 10px;margin-bottom:6px}
+.prow.me{border-color:var(--gold)}
+.pnum{font-size:15px;font-weight:800;color:var(--gold);width:20px;flex:none;text-align:center}
+.pav{width:30px;height:30px;border-radius:50%;background:var(--bg3);flex:none;display:flex;
+  align-items:center;justify-content:center;font-size:14px;overflow:hidden}
+.pav img{width:100%;height:100%;object-fit:cover}
+.pinfo{flex:1;min-width:0}
+.pname{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pmeta{font-size:10px;color:var(--dim)}
+.pworth{text-align:right;font-size:13px;font-variant-numeric:tabular-nums;flex:none}
+
+/* TABS */
+.tabs{flex:none;display:grid;grid-template-columns:repeat(5,1fr);background:#0e0e12;
+  border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+.tb{background:none;border:none;color:var(--dim);padding:9px 0 10px;font-size:24px;cursor:pointer}
+.tb span{display:block;font-size:12px;margin-top:2px}
+.tb.active{color:var(--gold)}
+
+.endbtn{position:fixed;left:10px;right:10px;bottom:calc(env(safe-area-inset-bottom) + 58px);
+  padding:13px;border-radius:11px;border:none;background:var(--gold);color:#141410;
+  font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.6);z-index:10}
+.endbtn:disabled{background:#2a2a33;color:#6a6a76}
+
+/* SHEET */
+.sheet{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.72);display:flex;align-items:flex-end}
+.sheet-in{width:100%;max-height:88vh;overflow-y:auto;background:var(--bg2);
+  border-radius:16px 16px 0 0;border-top:1px solid var(--line);padding:16px 14px calc(env(safe-area-inset-bottom) + 20px);
+  animation:up .18s ease-out}
+@keyframes up{from{transform:translateY(40px)}to{transform:translateY(0)}}
+.sh-title{font-size:18px;font-weight:800;margin-bottom:2px}
+.sh-sub{font-size:11.5px;color:var(--dim);margin-bottom:12px}
+.fact{display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:6px 8px;
+  background:#0f0f14;border-radius:7px;margin-bottom:4px;border:1px solid #1e1e26}
+.fact span{flex:1;color:#b9b9c4}
+.fact b{font-variant-numeric:tabular-nums;flex:none}
+.rowbtns{display:flex;gap:8px;margin-top:12px}
+.rowbtns .btn{flex:1}
+.picklist{max-height:44vh;overflow-y:auto;margin-top:8px}
+.big-num{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+.mini{font-size:11px;color:var(--dim);line-height:1.45}
+
+/* уведомления — внутри игрового поля, поверх верхних клеток доски, а не снизу экрана */
+/* уведомления — прямо над игровым полем (не перекрывают клетки/таймер партии) */
+.toast{position:absolute;left:0;right:0;top:-46px;z-index:60;
+  background:#1e1e26;border:1px solid var(--line);border-radius:10px;padding:9px 14px;
+  font-size:13px;font-weight:600;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.7)}
+.toast.bad{border-color:#5a2630;color:#ff9aa5}
+.toast.good{border-color:#2c5a3c;color:#8fe3b4}
+#tab-board{position:relative}
+.matchtimer{background:#1c1a10;border:1px solid #4a3a10;border-radius:8px;padding:5px 12px;
+  color:var(--gold);font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;
+  box-shadow:0 2px 8px rgba(0,0,0,.4)}
+@media(min-width:640px){.endbtn{max-width:500px;margin:0 auto}}
+
+/* ================= РАЗМЕТКА: доска почти во весь экран + узкие боковые колонки слева/справа ================= */
+.boardlayout{display:flex;align-items:stretch;gap:8px;width:100%;justify-content:center}
+.corner{flex:none;width:170px;max-height:calc(100vh - 180px);overflow-y:auto;
+  -webkit-overflow-scrolling:touch;background:var(--bg2);border:1px solid var(--line);
+  border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:8px}
+.corner-tr{width:150px;flex:1;max-height:none} /* хроника ходов растягивается на всю высоту рядом с доской */
+.side-left{display:flex;flex-direction:column;gap:8px;flex:none}
+.side-right{display:flex;flex-direction:column;gap:8px;flex:none;height:100%}
+.corner .sec-title{margin:0 2px 5px}
+.mini-prow{padding:5px 6px;gap:6px}
+.mini-prow .pav{width:22px;height:22px;font-size:10px}
+.mini-prow .pname{font-size:11px}
+.mini-prow .pworth{font-size:11px}
+
+/* ================= ДОСКА 40 КЛЕТОК (адаптивная, без скролла) — только десктоп ================= */
+/* поле заполняет весь доступный экран и по ширине, и по высоте — контейнер прямоугольный
+   (шире, чем выше), сетка 11×11 равномерная, поэтому все клетки одинакового размера
+   (просто не квадратные, а прямоугольные — вытянутые по горизонтали) */
+.boardwrap{position:relative;width:calc(100vw - 360px);height:calc(100vh - 198px);
+  max-width:100%;flex:none;transition:transform .15s ease;transform:scale(var(--boardscale,1))}
+.board{position:relative;width:100%;height:100%;display:grid;
+  grid-template-columns:repeat(11,1fr);grid-template-rows:repeat(11,1fr);gap:2px;
+  background:#07070a;border:1px solid var(--line);border-radius:14px;padding:4px}
+.cell{position:relative;background:var(--bg2);border:1px solid #2a2a34;border-radius:7px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-size:11px;line-height:1.15;text-align:center;overflow:hidden;cursor:pointer;padding:2px}
+.cell:active{background:var(--bg3)}
+.cell .cico{font-size:26px}
+.cell .cnm{font-size:8.5px;font-weight:600;color:var(--dim);max-width:100%;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;margin-top:1px}
+.cell .cpr{font-size:8.5px;color:var(--gold);font-variant-numeric:tabular-nums;font-weight:700}
+.cell.corner{background:#16161f}
+
+.cell.k-legal{border-color:#2c5a3c;border-width:2px}
+.cell.k-grey{border-color:#5a4a1e;border-width:2px}
+.cell.k-crime{border-color:#5a2630;border-width:2px}
+.cell.own-me{background:#0d1710;border-color:var(--green);border-width:2px}
+.cell.own-rival{background:#170d10;border-color:var(--red);border-width:2px}
+.cell.spec{background:#12121a}
+.cell.here{outline:3px solid var(--gold);outline-offset:-3px;z-index:3;box-shadow:0 0 16px rgba(212,175,55,.5)}
+.cell .toks{position:absolute;bottom:1px;left:1px;right:1px;display:flex;gap:1px;justify-content:center;flex-wrap:wrap}
+.tok{width:17px;height:17px;border-radius:50%;border:1.5px solid #000;font-size:9px;font-weight:900;
+  display:flex;align-items:center;justify-content:center;color:#000;box-shadow:0 1px 2px rgba(0,0,0,.6)}
+.tok.mine{box-shadow:0 0 0 1.5px var(--gold),0 1px 2px rgba(0,0,0,.6)}
+.center{grid-column:2/11;grid-row:2/11;background:radial-gradient(ellipse at 50% 30%,#15151f,#0a0a0c);
+  border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px}
+.center .logo2{display:none}
+
+/* Панель управления ходом — ЗАФИКСИРОВАНА над доской, не уезжает при скролле/центровке */
+.ctlpanel{position:sticky;top:0;z-index:8;background:#0d0d11;border:1px solid var(--line);
+  border-radius:12px;padding:10px 12px;margin-bottom:8px;display:flex;flex-direction:column;
+  align-items:center;gap:8px;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+
+/* НАСТОЯЩИЕ КУБИКИ с точками, не цифры */
+.dice{display:flex;gap:16px}
+.die{width:68px;height:68px;border-radius:12px;background:linear-gradient(145deg,#fdfdfd,#e2e2e2);
+  box-shadow:0 5px 14px rgba(0,0,0,.55),inset 0 -3px 4px rgba(0,0,0,.12);
+  position:relative;display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr 1fr;
+  padding:10px;gap:2px;margin-top:8px}
+.die .pip{width:12px;height:12px;border-radius:50%;background:#1a1a1a;align-self:center;justify-self:center;
+  box-shadow:inset 0 1px 1px rgba(255,255,255,.15)}
+.die.rolling{animation:shake .5s ease-in-out}
+@keyframes shake{0%,100%{transform:translateY(0) rotate(0)}25%{transform:translateY(-10px) rotate(-16deg)}75%{transform:translateY(-6px) rotate(14deg)}}
+.turnbadge{font-size:15px;color:var(--dim);text-align:center;font-weight:600}
+.turnbadge b{color:var(--white)}
+.turnbadge.mine b{color:var(--gold)}
+.phasebar{font-size:13px;color:var(--gold);font-variant-numeric:tabular-nums;font-weight:700}
+.rollbtn{padding:18px 40px;border:none;border-radius:14px;background:var(--gold);color:#141410;
+  font-size:22px;font-weight:800;cursor:pointer;box-shadow:0 4px 12px rgba(212,175,55,.35)}
+.rollbtn:disabled{background:#2a2a33;color:#6a6a76;box-shadow:none}
+.evtbox{font-size:14px;color:#e4e4ea;text-align:center;max-width:96%;line-height:1.4;font-weight:500}
+.evtbox b{color:var(--gold)}
+.evtbox.mine{color:#8fe3b4}
+.evtbox.rival{color:#ffc79a}
+.surrenderbtn{padding:8px 14px;border-radius:9px;border:1px solid #5a2630;background:#1a1013;
+  color:#ff9aa5;font-size:12px;font-weight:700;cursor:pointer}
+
+/* карточки моих объектов внизу */
+.mycards{display:flex;flex-direction:column;gap:6px;padding:4px 2px 8px}
+.mycard{display:flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--line);
+  border-radius:9px;padding:7px;cursor:pointer}
+.mycard .mc1{font-size:18px;flex:none}
+.mycard .mc2{font-size:10.5px;font-weight:600;line-height:1.2;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mycard .mc3{font-size:10px;color:var(--gold);font-variant-numeric:tabular-nums;flex:none}
+.mycard .mc4{font-size:9px;color:var(--dim);flex:none;display:none}
+.mycard.up-p{border-color:#2c5a3c}
+.mycard.down-p{border-color:#5a2630}
+
+/* цепочки: слоты — раскрытые (объект) и скрытые (загадка-синоним) */
+.chain{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:9px;margin-bottom:6px}
+.chain h4{margin:0 0 3px;font-size:12.5px;color:var(--gold)}
+.chain .cd{font-size:10px;color:var(--dim);line-height:1.3}
+.chain .cp{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+.chain .cpi{font-size:9px;padding:2px 5px;border-radius:4px;background:#0f0f14;border:1px solid #23232c;color:#b9b9c4}
+.chain .cpi.mystery{background:#1a1420;border-color:#332a44;color:#9d8cc9;font-style:italic}
+
+/* стопки карт сверху + хроника ходов, растянутая до самого низа экрана */
+.decks-col{display:flex;flex-direction:column;gap:8px;align-items:center;height:100%}
+.decks-row{display:flex;gap:8px;justify-content:center;flex:none}
+
+.zoomctl{display:flex;gap:4px;background:rgba(14,14,18,.88);border:1px solid var(--line);border-radius:8px;padding:4px}
+.zbtn{width:30px;height:30px;border-radius:6px;border:1px solid var(--line);background:var(--bg2);
+  color:var(--gold);font-size:16px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.zbtn:active{background:var(--bg3)}
+
+/* хроника ходов — растянута от колод карт до самого низа экрана, обычный скроллящийся список,
+   только реальные ходы/действия игроков, без мировых новостей (те — во вкладке «Мир») */
+.chronicle-ticker{width:100%;flex:1;min-height:0;background:#0e0e12;border:1px solid var(--line);
+  border-radius:9px;overflow:hidden;display:flex;flex-direction:column}
+.ct-head{flex:none;font-size:9px;letter-spacing:1px;color:var(--dim);font-weight:700;
+  text-align:center;padding:5px 2px;border-bottom:1px solid var(--line)}
+.ct-inner{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column}
+.ct-item{font-size:11px;line-height:1.4;color:#c7c7d0;padding:6px 8px;border-bottom:1px solid #1a1a20;flex:none}
+.ct-item.mine{color:#8fe3b4;font-weight:600}
+.deckpile{position:relative;width:60px;height:84px}
+.deckpile .back{position:absolute;inset:0;border-radius:8px;background:linear-gradient(145deg,#3a2a1a,#1e1610);
+  border:2px solid #5a4020;box-shadow:0 4px 10px rgba(0,0,0,.5)}
+.deckpile .back::before{content:'?';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:#a0784a;font-size:30px;font-weight:900}
+.deckpile .back:nth-child(2){transform:translate(3px,3px);z-index:-1;opacity:.6}
+.deckpile .cnt{position:absolute;bottom:-8px;right:-6px;background:var(--gold);color:#141410;
+  font-size:14px;font-weight:800;border-radius:10px;padding:2px 8px;box-shadow:0 2px 4px rgba(0,0,0,.4)}
+.deckpile.chest .back{background:linear-gradient(145deg,#1a3a2a,#101e16);border-color:#205a38}
+.deckpile.chest .back::before{color:#5ac98a}
+.chain .cpi.have{background:#14301f;border-color:#2c5a3c;color:#8fe3b4}
+.chain.done{border-color:var(--gold)}
+
+/* анимация вытянутой карты — показывает всем на 1.5 сек */
+.card-overlay{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.55);display:flex;
+  align-items:center;justify-content:center}
+.card-fly{width:240px;min-height:320px;border-radius:16px;padding:24px 20px;
+  background:linear-gradient(160deg,#1f1a14,#0f0c08);border:3px solid var(--gold);
+  box-shadow:0 12px 40px rgba(0,0,0,.7),0 0 30px rgba(212,175,55,.3);
+  display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;
+  animation:cardIn .35s cubic-bezier(.2,1.4,.4,1)}
+@keyframes cardIn{from{transform:scale(.3) rotate(-12deg) translateY(-60px);opacity:0}
+  to{transform:scale(1) rotate(0);opacity:1}}
+.card-fly .cf-deck{font-size:13px;letter-spacing:2px;color:var(--gold);font-weight:800;text-transform:uppercase}
+.card-fly .cf-icon{font-size:64px}
+.card-fly .cf-text{font-size:17px;line-height:1.4;color:var(--white);font-weight:600}
+.card-fly .cf-actor{font-size:12px;color:var(--dim)}
+.card-fly.chest{border-color:#5ac98a;box-shadow:0 12px 40px rgba(0,0,0,.7),0 0 30px rgba(90,201,138,.3)}
+.card-fly.chest .cf-deck{color:#5ac98a}
+
+/* панель достопримечательностей города (8-бит стиль через emoji-пиксели) */
+.landmarks{display:flex;gap:8px;justify-content:center;margin:8px 0}
+.landmark{width:64px;height:64px;border-radius:8px;background:#0d1b12;border:2px solid #2c5a3c;
+  display:flex;align-items:center;justify-content:center;font-size:32px;
+  image-rendering:pixelated;box-shadow:inset 0 0 12px rgba(0,255,100,.08)}
+.landmark.l8{filter:contrast(1.3) saturate(1.4)}
+
+/* лого SHADOW / EMPIRE по бокам бегущей строки котировок */
+.ticker{display:flex;align-items:center}
+.tk-logo{flex:none;font-weight:900;letter-spacing:2px;color:var(--gold);font-size:16px;padding:0 10px;z-index:2;background:#07070a}
+.tk-r{color:var(--white)}
+.tick-inner{flex:1}
+
+/* карточка в центре поля — переворот в воздухе, увеличение, задержка 1.5с */
+#centerCardSlot{min-height:180px;display:flex;align-items:center;justify-content:center;perspective:900px}
+.card-center{width:236px;padding:18px 20px 20px;border-radius:14px;
+  background:linear-gradient(160deg,#1f1a14,#0f0c08);border:3px solid var(--gold);
+  box-shadow:0 8px 30px rgba(0,0,0,.6),0 0 24px rgba(212,175,55,.3);
+  display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;
+  backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.card-center.chest{border-color:#5ac98a;box-shadow:0 8px 30px rgba(0,0,0,.6),0 0 24px rgba(90,201,138,.3)}
+.card-center .cf-deck{font-size:13px;letter-spacing:2px;color:var(--gold);font-weight:800;text-transform:uppercase}
+.card-center.chest .cf-deck{color:#5ac98a}
+/* рамка-иллюстрация с иконкой — как визитка на настоящей игровой карте, не просто одинокая эмодзи */
+.card-center .cf-art{width:120px;height:120px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at 40% 30%,#2a2318,#100d08);border:2px solid rgba(212,175,55,.5);
+  box-shadow:inset 0 0 22px rgba(212,175,55,.15),0 4px 14px rgba(0,0,0,.5)}
+.card-center.chest .cf-art{border-color:rgba(90,201,138,.5);box-shadow:inset 0 0 22px rgba(90,201,138,.15),0 4px 14px rgba(0,0,0,.5)}
+.card-center .cf-icon{font-size:64px;line-height:1}
+.card-center .cf-title{font-size:15px;font-weight:900;letter-spacing:.5px;color:var(--gold);text-transform:uppercase}
+.card-center.chest .cf-title{color:#5ac98a}
+.card-center .cf-text{font-size:13.5px;line-height:1.35;color:#d6d4cc}
+.card-center .cf-actor{font-size:12px;color:var(--dim)}
+.flip-in{animation:flipFly .55s cubic-bezier(.2,1.2,.4,1)}
+/* Заметно: без backface-visibility:hidden на углах 90–270° виден зеркально атражённый нечитаемый
+   текст (было в старой версии). С backface-visibility карта на этих углах скрыта,
+   поэтому делаем один короткий поворот (0→360°) вместо нескольких полных оборотов —
+   карта коротко пропадает из виду, но текст никогда не виден вывернутым. */
+@keyframes flipFly{
+  0%{transform:translateY(-90px) rotateY(0deg) scale(.5);opacity:0}
+  45%{transform:translateY(-20px) rotateY(180deg) scale(.85);opacity:.5}
+  75%{transform:translateY(0) rotateY(360deg) scale(1.06);opacity:1}
+  100%{transform:translateY(0) rotateY(360deg) scale(1);opacity:1}
+}
+
+/* оверлей покупки: слева достопримечательность, справа объект (8-бит пиксель) */
+.buy-center{display:flex;align-items:center;gap:14px;padding:16px 20px;border-radius:14px;
+  background:linear-gradient(160deg,#0d1b12,#08120c);border:3px solid var(--gold);
+  box-shadow:0 8px 30px rgba(0,0,0,.6),0 0 24px rgba(212,175,55,.25)}
+.buy-center .bc-side{display:flex;flex-direction:column;align-items:center;gap:6px}
+.buy-center .bc-pixel{width:96px;height:96px;border-radius:10px;background:#06120a;border:2px solid #2c5a3c;
+  display:flex;align-items:center;justify-content:center;font-size:56px;
+  image-rendering:pixelated;filter:contrast(1.4) saturate(1.6);box-shadow:inset 0 0 18px rgba(0,255,100,.1)}
+.buy-center .bc-name{font-size:13px;font-weight:700;color:var(--white);max-width:120px;text-align:center}
+.buy-center .bc-arrow{font-size:32px;color:var(--gold)}
+.buy-center .cf-actor{font-size:12px;color:var(--dim);align-self:center}
+.buy-in{animation:buyPop .5s cubic-bezier(.2,1.3,.4,1)}
+@keyframes buyPop{from{transform:scale(.5) translateY(-30px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}

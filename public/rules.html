@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="theme-color" content="#0a0a0c">
+<title>Правила — SHADOW EMPIRE</title>
+<link rel="icon" href="/favicon.svg">
+<link rel="stylesheet" href="/style.css">
+<style>
+  body{overflow-y:auto}
+  .rules{max-width:640px;margin:0 auto;padding:18px 16px calc(env(safe-area-inset-bottom) + 90px)}
+  .rules h1{color:var(--gold);font-size:22px;margin:6px 0 2px}
+  .rules h2{color:var(--white);font-size:15px;margin:22px 0 8px;padding-top:10px;border-top:1px solid var(--line)}
+  .rules p, .rules li{color:#c7c7d0;font-size:14px;line-height:1.55}
+  .rules ul{margin:6px 0;padding-left:20px}
+  .rules .lead{color:var(--dim);font-size:13.5px}
+  .card{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:12px;margin:10px 0}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+  .grid2 .cell{background:#0f0f14;border:1px solid #202028;border-radius:8px;padding:8px 10px;font-size:12.5px}
+  .grid2 .cell b{display:block;color:var(--gold);font-size:13px;margin-bottom:2px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin:8px 0}
+  td,th{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left;color:#c7c7d0}
+  th{color:var(--dim);font-weight:600}
+  .topbar{position:sticky;top:0;background:#0e0e12;border-bottom:1px solid var(--line);
+    display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top) + 8px) 14px 8px;z-index:5}
+  .topbar a{color:var(--dim);text-decoration:none;font-size:14px}
+  .topbar .brand{margin-left:auto;color:var(--gold);font-weight:800;letter-spacing:1px;font-size:13px}
+  .langsw{display:flex;gap:4px;background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:3px;margin-left:8px}
+  .langsw .lg{background:none;border:none;color:var(--dim);padding:4px 10px;border-radius:6px;
+    font-size:12px;font-weight:700;cursor:pointer}
+  .langsw .lg.active{background:var(--gold);color:#141410}
+  .lang-block{display:none}
+  .lang-block.active{display:block}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="/" id="backLink">← Играть</a>
+  <div class="langsw" id="langsw">
+    <button class="lg" data-lang="ru">RU</button>
+    <button class="lg" data-lang="en">EN</button>
+  </div>
+  <span class="brand">SHADOW EMPIRE</span>
+</div>
+
+<div class="rules">
+
+<div class="lang-block" data-lang="ru">
+  <h1>Правила</h1>
+  <p class="lead">Монополия, где кубик — это реальный мир. Раз в раунд игра пересчитывает доход
+  по настоящим ценам нефти/золота/валют, погоде и новостям про войны, протесты и коррупцию.</p>
+
+  <h2>Как играть</h2>
+  <p>Классическая доска на <b>40 клеток</b>. Бросаешь кубик (2 кости), идёшь по кольцу,
+  выполняешь то, что на клетке. <b>10 секунд</b> на бросок, <b>20 секунд</b> на решение по событию.
+  Пока ходят другие — можно вести теневые дела (взятки, рейды, отмывание, залог банку, сделки).</p>
+  <p><b>Победа:</b> партия идёт <b>30 минут</b>. Когда время истекает, победитель — у кого больше
+  итоговый <b>капитал</b> (недвижимость по рыночной цене + деньги, нал считается с дисконтом).
+  Старт: $80K белых + $30K нала + 6 влияния. Клетки: $25–70K.</p>
+
+  <h2>Клетки доски</h2>
+  <table>
+    <tr><th>Клетка</th><th>Что происходит</th></tr>
+    <tr><td>🏁 СТАРТ</td><td>проход +$25K, точное попадание +$50K</td></tr>
+    <tr><td>🏢 Бизнес (25 клеток)</td><td>свободна — покупай; чужая — платишь аренду; своя — ничего</td></tr>
+    <tr><td>🎯 Шанс / 🎁 Казна</td><td>тянешь карту из колоды (16+16 карт)</td></tr>
+    <tr><td>🚔 В тюрьму!</td><td>залог $30K или сидишь 2 хода, кидаешь на третий. В тюрьме аренда не идёт</td></tr>
+    <tr><td>🏯 Tower of London</td><td>просто посетили — безопасно, ничего не происходит</td></tr>
+    <tr><td>🧾 Налог</td><td>платишь $25K в банк</td></tr>
+    <tr><td>🕶️ Заплати крыше</td><td>платишь $20K бандитам</td></tr>
+    <tr><td>⚠️ Беспорядки</td><td>пропуск хода</td></tr>
+    <tr><td>🌪️ Бедствие</td><td>пропуск хода</td></tr>
+    <tr><td>🅿️ Стоянка</td><td>ничего не происходит</td></tr>
+  </table>
+
+  <h2>Аренда</h2>
+  <p>Платит тот, кто встал на твою клетку. Размер = живой доход объекта (реальные цены, погода,
+  новости) × множитель цепочки. Номинал: легал/серое — белыми, крим — налом.
+  Не хватает нужной валюты — доплата другой по курсу 60%. Совсем нет денег — остаток в долг,
+  спишется из будущего дохода. Рента платится автоматически в момент попадания на клетку — платить её вручную не нужно.</p>
+
+  <h2>Цепочки (вместо «цветов»)</h2>
+  <p>Вместо однотонных улиц — <b>реальные производственные цепочки через разные города</b>:
+  например «Золотой прииск → Ювелирный салон → Завод полупроводников → Частный банк».
+  В каждой партии активны <b>3 случайные цепочки</b> из 7 — все 4 предприятия каждой цепочки видны сразу,
+  без загадок. Собрал всю цепочку: множитель аренды ×1.7–2.0 и денежный бонус.
+  <b>Кто собрал первым — бонус удваивается.</b></p>
+
+  <h2>Если не хватает денег</h2>
+  <p>На аренду, налог, штраф или залог из тюрьмы:</p>
+  <ul>
+    <li><b>Продать банку</b> — цена зависит от репутации: 90% стоимости при репутации 100, 45% при 0.</li>
+    <li><b>Предложить другим игрокам</b> — сам ставишь цену, любой может принять.</li>
+    <li>Если совсем нечем платить залог — банкротство.</li>
+  </ul>
+  <h2>Активы</h2>
+  <p>25 активов в 6 зонах, три типа:</p>
+  <table>
+    <tr><th>Тип</th><th>Покупка</th><th>Особенность</th></tr>
+    <tr><td>🟢 Легал</td><td>белыми</td><td>стабильно, но налоги и проверки</td></tr>
+    <tr><td>🟡 Серое</td><td>белыми</td><td>выше доходность, выше риск</td></tr>
+    <tr><td>🔴 Крим</td><td>налом (70% цены)</td><td>максимальный доход, максимальное палево</td></tr>
+  </table>
+  <p>Доход актива = базовый доход × (движение привязанного рынка × плечо) × война × беспорядки ×
+  погода × коррупция − «обслуживание палева». Тапни любой актив — увидишь точную раскладку
+  со ссылками на настоящие новости.</p>
+
+  <h2>Коррупция</h2>
+  <div class="grid2">
+    <div class="cell"><b>Взятка мэру</b>твои налоги в зоне −30%, у всех остальных издержки +18%. Действует 5 раундов</div>
+    <div class="cell"><b>Госконтракт</b>гарантированный доход $26–40K/раунд, требует влияния</div>
+    <div class="cell"><b>Купить инспектора</b>−25% к шансу собрать улику на тебя, 3 раунда</div>
+    <div class="cell"><b>Лоббизм</b>белые → влияние</div>
+    <div class="cell"><b>Офшор</b>спасает один актив от конфискации при обыске</div>
+    <div class="cell"><b>Отмывка</b>нал → белые, комиссия 25% (18% при влиянии ≥8)</div>
+  </div>
+
+  <h2>Криминал (против других игроков)</h2>
+  <div class="grid2">
+    <div class="cell"><b>Заказать проверку</b>замораживает чужой актив на 2 раунда. 40% шанс, что жертва узнает заказчика</div>
+    <div class="cell"><b>Рейд / поджог</b>−30% стоимости чужого актива, если не отбит крышей</div>
+    <div class="cell"><b>Крыша</b>защищает твои активы от рейдов и гасит убытки от беспорядков на 65%</div>
+    <div class="cell"><b>Рейдерский захват</b>нужны ВСЕ условия сразу: актив повреждён рейдом, у тебя куплен мэр этой зоны, и достаточно влияния (6) + нала ($130K) + 2 очка действий</div>
+  </div>
+
+  <h2>Следствие</h2>
+  <p>Каждое грязное действие может оставить улику. При <b>3 уликах</b> открывается дело — 3 раунда,
+  чтобы решить вопрос:</p>
+  <ul>
+    <li><b>Занести прокурору</b> — платишь налом, улики и палево падают.</li>
+    <li><b>Сдать партнёра</b> — твои улики обнуляются и палево −30, но репутация −15,
+      а сданный узнаёт, кто его сдал.</li>
+    <li>Ничего не сделал — конфискация самого дорогого актива (если нет офшора), штраф и
+      арест на 1 раунд.</li>
+  </ul>
+  <p>Прокурор активнее, если в реальных новостях в этот момент много материалов про коррупцию
+  и санкции — это не скрипт, это реальный новостной фон.</p>
+
+  <h2>Мир</h2>
+  <p>Данные обновляются каждые ~12 минут: нефть, золото, газ, пшеница, BTC, USD/RUB, S&P500
+  (Yahoo Finance), погода по городам (Open-Meteo), заголовки про войну/протесты/коррупцию
+  (Google News). Все игроки партии видят один и тот же снапшот мира — это честно и одинаково для всех.</p>
+
+  <h2>Мультиплеер</h2>
+  <p>На входе выбираешь формат:</p>
+  <ul>
+    <li><b>🤖 Играть с ботами</b> — общий стол, свободные места добираются ботами до 4 игроков.</li>
+    <li><b>🌐 Публичная комната</b> — своя партия без ботов, видна всем в списке открытых комнат.</li>
+    <li><b>🔒 Приватная комната</b> — своя партия без ботов, попасть можно только по прямой ссылке
+      (кнопка 🔗 в игре копирует ссылку на комнату — просто отправь её друзьям).</li>
+  </ul>
+  <p>Раунд внутри партии рассчитывается по таймеру (доход, мир, новости). Сама партия длится
+  30 минут — после этого игра сразу подводит итог по капиталу. После окончания партии доступна
+  кнопка «🔁 Переиграть» — стол пересобирается заново с тем же составом.</p>
+
+  <p class="lead" style="margin-top:26px">Это сатирический прототип. Названия зон и активов
+  вымышлены как игровые собирательные образы; реальные новости используются только как
+  экономический сигнал (цена/индекс/число сообщений), без привязки к реальным лицам.</p>
+</div>
+
+<div class="lang-block" data-lang="en">
+  <h1>Rules</h1>
+  <p class="lead">Monopoly where the dice is the real world. Once per round the game recalculates
+  income from real oil/gold/currency prices, weather, and news about wars, protests and corruption.</p>
+
+  <h2>How to play</h2>
+  <p>Classic <b>40-cell</b> board. Roll the dice (2 dice), move around the loop,
+  resolve whatever is on the cell. <b>10 seconds</b> to roll, <b>20 seconds</b> to decide on an event.
+  While others are playing, you can run shadow business (bribes, raids, laundering, bail, deals).</p>
+  <p><b>Victory:</b> a match lasts <b>30 minutes</b>. When time runs out, the winner is whoever has the
+  highest total <b>net worth</b> (property at market price + cash, black money counted at a discount).
+  Start: $80K white + $30K cash + 6 influence. Cells: $25–70K.</p>
+
+  <h2>Board cells</h2>
+  <table>
+    <tr><th>Cell</th><th>What happens</th></tr>
+    <tr><td>🏁 GO</td><td>passing +$25K, landing exactly +$50K</td></tr>
+    <tr><td>🏢 Business (25 cells)</td><td>free — buy it; someone else's — pay rent; your own — nothing</td></tr>
+    <tr><td>🎯 Chance / 🎁 Chest</td><td>draw a card from the deck (16+16 cards)</td></tr>
+    <tr><td>🚔 Go to Jail!</td><td>$30K bail or sit 2 turns, roll on the third. No rent income while jailed</td></tr>
+    <tr><td>🏯 Tower of London</td><td>just visiting — safe, nothing happens</td></tr>
+    <tr><td>🧾 Tax</td><td>pay $25K to the bank</td></tr>
+    <tr><td>🕶️ Pay the roof</td><td>pay $20K to the gangsters</td></tr>
+    <tr><td>⚠️ Riots</td><td>skip a turn</td></tr>
+    <tr><td>🌪️ Disaster</td><td>skip a turn</td></tr>
+    <tr><td>🅿️ Parking</td><td>nothing happens</td></tr>
+  </table>
+
+  <h2>Rent</h2>
+  <p>Paid by whoever lands on your cell. Amount = the asset's live income (real prices, weather,
+  news) × chain multiplier. Currency: legal/grey — white money, crime — cash.
+  If you're short on the required currency, the rest is converted from the other at a 60% rate.
+  No money at all — the remainder becomes debt, deducted from future income. Rent is charged
+  automatically the moment you land on the cell — there's no manual "pay rent" button, and none is needed.</p>
+
+  <h2>Chains (instead of "colors")</h2>
+  <p>Instead of same-colored streets — <b>real production chains across different cities</b>:
+  e.g. "Gold mine → Jewelry store → Semiconductor fab → Private bank".
+  Each match has <b>3 random chains</b> out of 7 active — all 4 businesses of each chain are
+  shown upfront, no guessing. Collect the whole chain: rent multiplier ×1.7–2.0 and a cash bonus.
+  <b>First to collect it — bonus is doubled.</b></p>
+
+  <h2>If you're short on cash</h2>
+  <p>For rent, tax, a fine, or jail bail:</p>
+  <ul>
+    <li><b>Sell to the bank</b> — price depends on reputation: 90% of value at 100 reputation, 45% at 0.</li>
+    <li><b>Offer to other players</b> — set your own price, anyone can accept.</li>
+    <li>If you truly can't pay bail — bankruptcy.</li>
+  </ul>
+  <h2>Assets</h2>
+  <p>25 assets across 6 zones, three types:</p>
+  <table>
+    <tr><th>Type</th><th>Buy with</th><th>Trait</th></tr>
+    <tr><td>🟢 Legal</td><td>white money</td><td>stable, but taxes and audits</td></tr>
+    <tr><td>🟡 Grey</td><td>white money</td><td>higher yield, higher risk</td></tr>
+    <tr><td>🔴 Crime</td><td>cash (70% of price)</td><td>maximum income, maximum heat</td></tr>
+  </table>
+  <p>Asset income = base income × (linked market move × leverage) × war × unrest ×
+  weather × corruption − "heat upkeep". Tap any asset to see the exact breakdown
+  with links to real news.</p>
+
+  <h2>Corruption</h2>
+  <div class="grid2">
+    <div class="cell"><b>Bribe the mayor</b>your taxes in the zone −30%, everyone else's costs +18%. Lasts 5 rounds</div>
+    <div class="cell"><b>Gov contract</b>guaranteed income $26–40K/round, requires influence</div>
+    <div class="cell"><b>Buy an inspector</b>−25% chance of evidence against you, 3 rounds</div>
+    <div class="cell"><b>Lobbying</b>white money → influence</div>
+    <div class="cell"><b>Offshore</b>shields one asset from confiscation during a raid</div>
+    <div class="cell"><b>Laundering</b>cash → white money, 25% fee (18% at influence ≥8)</div>
+  </div>
+
+  <h2>Crime (against other players)</h2>
+  <div class="grid2">
+    <div class="cell"><b>Order an audit</b>freezes a rival's asset for 2 rounds. 40% chance the victim finds out who ordered it</div>
+    <div class="cell"><b>Raid / arson</b>−30% value of a rival's asset, unless blocked by protection</div>
+    <div class="cell"><b>Protection</b>shields your assets from raids and cuts unrest losses by 65%</div>
+    <div class="cell"><b>Hostile takeover (seize)</b>needs ALL conditions at once: the asset is raid-damaged, you own the mayor of that zone, and you have enough influence (6) + cash ($130K) + 2 action points</div>
+  </div>
+
+  <h2>Investigation</h2>
+  <p>Every dirty action can leave evidence. At <b>3 pieces of evidence</b> a case opens — 3 rounds
+  to settle it:</p>
+  <ul>
+    <li><b>Pay off the prosecutor</b> — pay cash, evidence and heat drop.</li>
+    <li><b>Snitch on a partner</b> — your evidence resets and heat −30, but reputation −15,
+      and the one you snitched on learns who did it.</li>
+    <li>Did nothing — confiscation of your most valuable asset (unless offshore), a fine and
+      1 round in jail.</li>
+  </ul>
+  <p>The prosecutor is more active when real news at that moment has a lot of material about
+  corruption and sanctions — this isn't scripted, it's the real news background.</p>
+
+  <h2>World</h2>
+  <p>Data updates roughly every 12 minutes: oil, gold, gas, wheat, BTC, USD/RUB, S&P500
+  (Yahoo Finance), weather per city (Open-Meteo), headlines about war/protests/corruption
+  (Google News). All players in the match see the same world snapshot — fair and identical for everyone.</p>
+
+  <h2>Multiplayer</h2>
+  <p>On entry, choose a format:</p>
+  <ul>
+    <li><b>🤖 Play with bots</b> — a shared table, open seats are filled with bots up to 4 players.</li>
+    <li><b>🌐 Public room</b> — your own match without bots, visible to everyone in the open rooms list.</li>
+    <li><b>🔒 Private room</b> — your own match without bots, joinable only via a direct link
+      (the 🔗 button in-game copies the room link — just send it to friends).</li>
+  </ul>
+  <p>Rounds within a match are computed on a timer (income, world, news). The match itself lasts
+  30 minutes — after that the game immediately settles the score by net worth. After the match ends,
+  a "🔁 Play again" button appears — the table is rebuilt fresh with the same lineup.</p>
+
+  <p class="lead" style="margin-top:26px">This is a satirical prototype. Zone and asset names
+  are fictional composite game images; real news is used only as an economic signal
+  (price/index/number of mentions), with no connection to real people.</p>
+</div>
+
+</div>
+
+<script>
+  const LANGSTR = { ru: { back: '← Играть' }, en: { back: '← Play' } };
+  function applyLang(lang) {
+    document.documentElement.lang = lang;
+    document.querySelectorAll('.lang-block').forEach(el => el.classList.toggle('active', el.dataset.lang === lang));
+    document.querySelectorAll('.langsw .lg').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
+    document.getElementById('backLink').textContent = LANGSTR[lang].back;
+    document.title = lang === 'en' ? 'Rules — SHADOW EMPIRE' : 'Правила — SHADOW EMPIRE';
+  }
+  let lang = localStorage.getItem('se_lang') || 'ru';
+  if (lang !== 'ru' && lang !== 'en') lang = 'ru';
+  applyLang(lang);
+  document.querySelectorAll('.langsw .lg').forEach(b => b.onclick = () => {
+    lang = b.dataset.lang;
+    localStorage.setItem('se_lang', lang);
+    applyLang(lang);
+  });
+</script>
+</body>
+</html>

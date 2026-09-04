@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SHADOW EMPIRE — план реализации</title>
+<style>
+  :root{--bg:#0a0a0c;--bg2:#121216;--line:#2a2a33;--gold:#d4af37;--white:#e8e6e0;--dim:#8b8b96}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--white);font:15px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;margin:0}
+  .wrap{max-width:760px;margin:0 auto;padding:20px 18px 60px}
+  .topbar{position:sticky;top:0;background:#0e0e12;border-bottom:1px solid var(--line);
+    display:flex;gap:14px;align-items:center;padding:10px 18px;z-index:5}
+  .topbar a{color:var(--dim);text-decoration:none;font-size:14px}
+  .topbar .brand{margin-left:auto;color:var(--gold);font-weight:800;font-size:13px;letter-spacing:1px}
+  .topbar .dl{color:var(--gold);font-weight:700}
+  h1{color:var(--gold);font-size:24px;border-bottom:1px solid var(--line);padding-bottom:10px}
+  h2{color:var(--white);font-size:18px;margin-top:30px;border-top:1px solid var(--line);padding-top:16px}
+  h3{color:#c9c9d2;font-size:15px}
+  p,li{color:#c7c7d0}
+  code{background:#16161d;border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:13px;color:#a8e3c4}
+  pre{background:#0f0f14;border:1px solid var(--line);border-radius:8px;padding:12px;overflow-x:auto}
+  pre code{border:none;background:none;padding:0}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;margin:10px 0;display:block;overflow-x:auto}
+  td,th{border:1px solid var(--line);padding:7px 9px;text-align:left}
+  th{background:var(--bg2);color:var(--gold)}
+  blockquote{border-left:3px solid var(--gold);margin:10px 0;padding:2px 14px;color:var(--dim);background:var(--bg2)}
+  hr{border:none;border-top:1px solid var(--line);margin:26px 0}
+  a{color:#4ba3ff}
+  #c{opacity:0;transition:opacity .2s}
+</style>
+</head>
+<body>
+<div class="topbar"><a href="/">← Игра</a><a href="/rules.html">Правила</a>
+  <a class="dl" href="/PLAN.md" download>Скачать .md</a><span class="brand">SHADOW EMPIRE</span></div>
+<div class="wrap"><div id="c">Загрузка плана…</div></div>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+fetch('/PLAN.md').then(r=>r.text()).then(md=>{
+  document.getElementById('c').innerHTML = marked.parse(md);
+  document.getElementById('c').style.opacity = 1;
+}).catch(()=>{ document.getElementById('c').textContent = 'Не удалось загрузить PLAN.md — используйте ссылку "Скачать .md" выше.'; });
+</script>
+</body>
+</html>
