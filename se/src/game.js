@@ -15,7 +15,7 @@ const CFG = {
   totalRounds: 200,
   startWhite: 80000,
   startBlack: 30000,
-  startInfluence: 6,
+  startInfluence: 5,
   apPerRound: 3,
   blackWorth: 0.6,       // нал считается в итоге с дисконтом
   launderFee: 0.25,
@@ -489,7 +489,13 @@ function doAction(room, pid, act, arg = {}) {
       if (!(st.damaged > 0)) return fail('Актив нужно сначала ослабить рейдом');
       if (st.protected || room.players[st.owner].protection) return fail('Актив под крышей — отжать нельзя');
       const mayor = room.zoneBribe[a.zone];
-      if (!mayor || mayor.owner !== pid) return fail('Нужен свой мэр в этой зоне — иначе захват не оформить');
+            if (!mayor || mayor.owner !== pid) return fail('Нужен свой мэр в этой зоне — иначе захват не оформить');
+
+      // ПРОВЕРКА ВСЕХ УСЛОВИЙ ЗАХВАТА
+      const def = DEF.seize;
+      if (p.influence < def.inf) return fail('Не хватает влияния (нужно 6)');
+      if (p.black < def.black) return fail('Не хватает нала (нужно $130K)');
+      if (p.ap < def.ap) return fail('Не хватает AP (нужно 2)');
       const victim = room.players[st.owner];
       pay();
       st.owner = pid; st.damaged = 0; st.frozen = 0;
@@ -958,4 +964,4 @@ function view(room, pid) {
   };
 }
 
-module.exports = { CFG, ASSETS, currentPlayerId, advanceTurn, checkWin, surrenderPlayer, BOARD: B.BOARD, FEES: B.FEES, ASSET_BY_ID, rooms, getRoom, addPlayer, doAction, endRound, view, botTurn, netWorth, log, BOT_NAMES, newRoom, fmt };
+module.exports = { CFG, ASSETS, currentPlayerId, advanceTurn, checkWin, surrenderPlayer, BOARD: B.BOARD, FEES: B.FEES, ASSET_BY_ID, rooms, getRoom, addPlayer, doAction, endRound, view, botTurn, botReact: botTurn, netWorth, log, BOT_NAMES, newRoom, fmt };
