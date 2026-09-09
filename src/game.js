@@ -113,7 +113,12 @@ function newRoom(id, opts = {}) {
     withBots: opts.withBots !== undefined ? opts.withBots : true,
     title: opts.title || null,
     createdAt: Date.now(),
-    matchEndsAt: Date.now() + CFG.matchMs,
+    // важно: таймер партии запускается НЕ в момент создания объекта комнаты (который для общего
+    // стола 'main' совпадает с моментом старта процесса сервера!), а в момент,
+    // когда в комнату зайдёт реальный игрок (см. addPlayer) — иначе на долгоживущем
+    // сервере игрок мог видеть «30 минут», от которых уже истекли несколько минут.
+    matchEndsAt: null,
+    matchStarted: false,
     players: {}, order: [],
     assets: {},              // assetId -> {owner, frozen, damaged, protected}
     zoneBribe: {},           // zone -> {owner, rounds}
@@ -206,6 +211,14 @@ function addPlayer(room, id, name, isBot = false, pfp = null) {
   p.pfp = pfp;
   room.players[id] = p;
   room.order.push(id);
+  // таймер партии (30 мин) заводится ровно один раз — в момент, когда в комнате появился
+  // первый реальный (не бот) игрок. Для общего стола 'main' комната
+  // существует с запуска сервера, поэтому без выделения в отдельный шаг таймер стартовал бы
+  // от момента старта процесса, а не от момента, когда игрок реально зашёл.
+  if (!isBot && !room.matchStarted) {
+    room.matchStarted = true;
+    room.matchEndsAt = Date.now() + CFG.matchMs;
+  }
   log(room, 'join', { key: 'log_join', params: { name } });
   return p;
 }
@@ -416,8 +429,9 @@ function doAction(room, pid, act, arg = {}) {
         p.heat += 6;
       } else {
         st.damaged = 3;
-        victim.white = Math.max(0, victim.white - 40000);
-        log(room, 'attack', { key: 'log_raid_hit', params: { icon: a.icon, assetId: a.id }, actorId: pid, targetId: victim.id });
+        const loss = Math.round(assetValue(a, room) * 0.3); // -30% стоимости актива (как в правилах), а не фиксированные $40K
+        victim.white = Math.max(0, victim.white - loss);
+        log(room, 'attack', { key: 'log_raid_hit', params: { icon: a.icon, assetId: a.id, amt: loss }, actorId: pid, targetId: victim.id });
       }
       p.rep -= 8; p.evidence += 1;
       return { ok: true };
@@ -489,13 +503,7 @@ function doAction(room, pid, act, arg = {}) {
       if (!(st.damaged > 0)) return fail('Актив нужно сначала ослабить рейдом');
       if (st.protected || room.players[st.owner].protection) return fail('Актив под крышей — отжать нельзя');
       const mayor = room.zoneBribe[a.zone];
-            if (!mayor || mayor.owner !== pid) return fail('Нужен свой мэр в этой зоне — иначе захват не оформить');
-
-      // ПРОВЕРКА ВСЕХ УСЛОВИЙ ЗАХВАТА
-      const def = DEF.seize;
-      if (p.influence < def.inf) return fail('Не хватает влияния (нужно 6)');
-      if (p.black < def.black) return fail('Не хватает нала (нужно $130K)');
-      if (p.ap < def.ap) return fail('Не хватает AP (нужно 2)');
+      if (!mayor || mayor.owner !== pid) return fail('Нужен свой мэр в этой зоне — иначе захват не оформить');
       const victim = room.players[st.owner];
       pay();
       st.owner = pid; st.damaged = 0; st.frozen = 0;
@@ -528,10 +536,15 @@ function doAction(room, pid, act, arg = {}) {
       if (p.skipTurns > 0) { p.skipTurns--; p.rolledThisTurn = true; log(room, 'world', { key: 'log_skip', actorId: pid }); return { ok: true, skipped: true }; }
       const deps = { valueFn: assetValue, incomeFn: income, log, payRent };
       const from = p.pos;
-      const r = TURN.doRoll(room, p, deps);
+      // важен порядок: сначала бросаем/двигаемся и логируем сам бросок,
+      // и только ПОСЛЕ этого разрешаем клетку — иначе в ленте сначала видно
+      // событие клетки («попал под бедствие»), а только потом сам бросок.
+      const mv = TURN.rollAndMove(room, p);
+      log(room, 'info', { key: 'log_roll', params: { d1: mv.d1, d2: mv.d2, sum: mv.steps, pos: mv.to }, actorId: pid });
+      const event = TURN.resolveCell(room, p, deps);
+      const r = { ...mv, event };
       p.rolledThisTurn = true;
       room.lastRoll = { pid, from, ...r, at: Date.now() };
-      log(room, 'info', { key: 'log_roll', params: { d1: r.d1, d2: r.d2, sum: r.steps, pos: r.to }, actorId: pid });
       TURN.checkChains(room, pid, log);
       room.phase = 'decide';
       room.phaseEndsAt = Date.now() + CFG.decideMs;
@@ -770,8 +783,13 @@ function endRound(room) {
     p.heat = Math.max(0, p.heat - CFG.heatDecay);
     if (p.insider > 0) p.insider--;
 
-    // следствие: реальные новости о коррупции усиливают прокурора
-    const risk = (p.heat / 160) + enforcement * 0.18 - (p.insider > 0 ? 0.25 : 0);
+    // следствие: реальные новости о коррупции усиливают прокурора.
+    // базовый риск — не чистый 0, а минимальный «фоновый шум» — иначе громкие следствия
+    // совсем не видны, когда heat близко к 0 и новостей мало (enforcement ≈ 0).
+    // инсайдер гасит риск на 30%, а не вычитается из него насухую сумму (то уходило в минус и полностью
+    // обнуляло следствие до конца действия инсайдера).
+    const baseRisk = Math.max(0.025, (p.heat / 160) + enforcement * 0.18);
+    const risk = p.insider > 0 ? baseRisk * 0.7 : baseRisk;
     if (risk > 0 && Math.random() < risk) {
       p.evidence += 1;
       log(room, 'law', { key: 'log_investigation', params: { n: p.evidence }, actorId: id });
@@ -877,6 +895,62 @@ function botTurn(room, p) {
   }
 }
 
+/**
+ * Реакция бота на события, которые могут возникать НЕ в его ход: аукционы (боты делают
+ * ставки), входящие сделки (propose_trade к боту — бот решает принять/отказаться),
+ * и предложения offer_asset (выставленные игроками объекты на продажу). Вызывается
+ * каждый тик для каждого бота в комнате, независимо от того, чей сейчас ход.
+ */
+function botReact(room, p) {
+  if (!p || p.eliminated) return;
+  // аукцион: бот с шансом перебивает, если актив ему выгоден и монет хватает
+  const au = room.auction;
+  if (au && !au.closed && au.currentBidder !== p.id && !(au.passed || []).includes(p.id)) {
+    const a = ASSET_BY_ID[au.assetId];
+    if (a) {
+      const fairValue = assetValue(a, room);
+      const worthIt = income(a, room, p.id).gross / Math.max(1, au.currentBid) > 0.08; // грубая оценка выгоды
+      const nextMin = au.currentBid + Math.max(2000, Math.round(au.currentBid * 0.1));
+      if (worthIt && nextMin <= fairValue * 1.4 && p.white >= nextMin && Math.random() < 0.7) {
+        doAction(room, p.id, 'auction_bid', { amount: nextMin });
+      } else if (Math.random() < 0.5) {
+        doAction(room, p.id, 'auction_pass', {});
+      }
+    }
+  }
+  // входящие торговые сделки, адресованные этому боту
+  const trades = (room.trades || []).filter(tr => tr.to === p.id);
+  for (const tr of trades) {
+    const from = room.players[tr.from];
+    if (!from) { room.trades = room.trades.filter(x => x.id !== tr.id); continue; }
+    // прикидывается грубая оценка выгоды: сравнивает стоимости обеих сторон сделки
+    const giveA = tr.giveAssetId ? ASSET_BY_ID[tr.giveAssetId] : null;
+    const wantA = tr.wantAssetId ? ASSET_BY_ID[tr.wantAssetId] : null;
+    const giveVal = giveA ? assetValue(giveA, room) : 0;
+    const wantVal = wantA ? assetValue(wantA, room) : 0;
+    // нетто-выгода для бота (принимающего): что он получает минус что отдаёт, плюс денежная разница
+    const netForBot = giveVal - wantVal + (tr.cashDelta || 0);
+    const canAfford = tr.cashDelta > 0 ? true : (tr.cashDelta < 0 ? p.white >= -tr.cashDelta : true);
+    if (netForBot >= -5000 && canAfford) {
+      doAction(room, p.id, 'accept_trade', { tradeId: tr.id });
+    } else if (Math.random() < 0.6) {
+      doAction(room, p.id, 'decline_trade', { tradeId: tr.id });
+    }
+  }
+  // выставленные игроками предложения купить (offer_asset) — бот иногда покупает, если выгодно
+  const offers = (room.offers || []).filter(o => o.from !== p.id);
+  for (const o of offers) {
+    const a = ASSET_BY_ID[o.assetId];
+    if (!a) continue;
+    const st = room.assets[a.id];
+    if (!st || st.owner !== o.from) continue; // уже продано/неактуально
+    const fairValue = assetValue(a, room);
+    if (p.white >= o.price && o.price <= fairValue * 1.15 && Math.random() < 0.4) {
+      doAction(room, p.id, 'accept_offer', { assetId: o.assetId });
+    }
+  }
+}
+
 // ---------- ВИД ДЛЯ КЛИЕНТА ----------
 function view(room, pid) {
   const W = world.snapshot();
@@ -888,6 +962,8 @@ function view(room, pid) {
       round: room.round, roundEndsAt: room.roundEndsAt, matchEndsAt: room.matchEndsAt,
       finished: room.finished, winner: room.winner, log: room.log.slice(0, 40), zoneBribe: room.zoneBribe,
       phase: room.phase, phaseEndsAt: room.phaseEndsAt, lastRoll: room.lastRoll,
+      order: room.order,   // порядок вступления в игру — клиент привязывает к него цвет игрока, чтобы
+      // он был стабильным и не менялся при каждой смене рейтинга (players сортируется по netWorth).
       currentPid: currentPlayerId(room), offers: room.offers || [],
       trades: room.trades || [], auction: room.auction || null,
       // Раскрываем только 2 из 4 слотов цепочки (revealIdx). Остальные — только
@@ -959,9 +1035,9 @@ function view(room, pid) {
       chance: (room.decks?.chance?.length) ?? B.CHANCE.length,
       chest: (room.decks?.chest?.length) ?? B.CHEST.length,
     },
-    cards: [...B.CHANCE, ...B.CHEST].map(c => ({ id: c.id, text: c.text, textEn: c.textEn })),
+    cards: [...B.CHANCE, ...B.CHEST].map(c => ({ id: c.id, text: c.text, textEn: c.textEn, icon: c.icon, title: c.title, titleEn: c.titleEn })),
     actions: ACTIONS,
   };
 }
 
-module.exports = { CFG, ASSETS, currentPlayerId, advanceTurn, checkWin, surrenderPlayer, BOARD: B.BOARD, FEES: B.FEES, ASSET_BY_ID, rooms, getRoom, addPlayer, doAction, endRound, view, botTurn, botReact: botTurn, netWorth, log, BOT_NAMES, newRoom, fmt };
+module.exports = { CFG, ASSETS, currentPlayerId, advanceTurn, checkWin, surrenderPlayer, BOARD: B.BOARD, FEES: B.FEES, ASSET_BY_ID, rooms, getRoom, addPlayer, doAction, endRound, view, botTurn, botReact, netWorth, log, BOT_NAMES, newRoom, fmt };

@@ -197,7 +197,7 @@ function buildBoard() {
   const cells = new Array(40).fill(null);
   // углы и спец-клетки — фиксированные позиции (как в оригинале)
   cells[0]  = { type: CELL.START,        name: 'СТАРТ',              nameEn: 'GO' };
-  cells[10] = { type: CELL.JAIL,         name: 'Просто посетили Tower of London', nameEn: 'Just visiting the Tower of London' };
+  cells[10] = { type: CELL.JAIL,         name: 'В гостях, не сижу', nameEn: 'Just visiting' };
   cells[20] = { type: CELL.FREE_PARKING, name: 'Свободная стоянка',  nameEn: 'Free Parking' };
   cells[30] = { type: CELL.GO_TO_JAIL,   name: 'В тюрьму!',          nameEn: 'Go to Jail!' };
   cells[4]  = { type: CELL.INCOME_TAX,   name: 'Подоходный налог',   nameEn: 'Income Tax' };

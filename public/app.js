@@ -883,13 +883,13 @@ function renderBoard() {
       return `<div class="cell k-${a.kind} ${own} ${hereCls}" style="grid-row:${g.r};grid-column:${g.c}${ownColor ? `;border-color:${ownColor}` : ''}"
         onclick="showAsset('${a.zone}','${a.id}')">
         <div class="cico">${a.icon}</div>
-        <div class="cnm">${an(a).slice(0, 13)}</div>
+        <div class="cnm ${an(a).length > 14 ? 'long' : ''}">${an(a)}</div>
         <div class="cpr">${money(a.value)}</div>
         <div class="toks">${toks}</div></div>`;
     }
     const hereCls = me && me.pos === c.i ? 'here' : '';
     return `<div class="cell spec ${corner ? 'corner' : ''} ${hereCls}" style="grid-row:${g.r};grid-column:${g.c}">
-      <div class="cico">${specIcon(c.type)}</div><div class="cnm">${specName(c.type)}</div>
+      <div class="cico">${specIcon(c.type)}</div><div class="cnm ${specName(c.type).length > 14 ? 'long' : ''}">${specName(c.type)}</div>
       <div class="toks">${toks}</div></div>`;
   }).join('');
 
@@ -1179,6 +1179,7 @@ window.startAuctionFromSheet = assetId => {
 window.showAsset = (zid, aid) => {
   const z = S.zones.find(x => x.id === zid);
   const a = z.assets.find(x => x.id === aid);
+  const me = S.me;
   const mine = a.owner === PID;
   const facts = a.factors.map(f => {
     const label = f.key ? t(f.key, f.params || {}) : (f.k || '');

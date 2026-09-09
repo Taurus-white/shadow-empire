@@ -43,8 +43,8 @@ const DICT = {
     legal: 'ЛЕГАЛ', grey: 'СЕРОЕ', crime: 'КРИМ',
     buy: cost => `Купить ${cost}`, buyBlack: 'налом', later: 'Позже',
     auditBtn: '🚔 Проверка $50K нал', raidBtn: '🔥 Рейд $90K нал',
-    buyoutBtn: p => `🤝 Выкупить за ${p}`, seizeBtn: '⚔️ Рейдерский захват (нужен свой мэр) 6 влияния + $130K нал',
-    seizeNeedMayor: 'Захват возможен только если актив повреждён рейдом И у тебя куплен мэр этой зоны.',
+    buyoutBtn: p => `🤝 Выкупить за ${p}`, seizeBtn: '⚔️ Рейдерский захват: 6 влияния · $130K нал · 2 AP',
+    seizeNeedMayor: 'Захват возможен, только если актив повреждён рейдом, у тебя куплен мэр этой зоны, есть 6 влияния, $130K нала и 2 очка действий.',
     close: 'Закрыть', linkedTo: l => `привязан к «${l}»`, leverage: 'плечо',
     perRoundBlack: '/раунд налом', perRoundWhite: '/раунд белыми',
     baseIncome: b => `Базовый доход ${b}`, value: v => `стоимость ${v}`, ownerLbl: 'владелец',
@@ -156,8 +156,8 @@ const DICT = {
     legal: 'LEGAL', grey: 'GREY', crime: 'CRIME',
     buy: cost => `Buy ${cost}`, buyBlack: 'in cash', later: 'Later',
     auditBtn: '🚔 Audit $50K cash', raidBtn: '🔥 Raid $90K cash',
-    buyoutBtn: p => `🤝 Buy out for ${p}`, seizeBtn: '⚔️ Hostile takeover (needs your mayor) 6 influence + $130K cash',
-    seizeNeedMayor: 'Takeover only works if the asset is raid-damaged AND you own the mayor of this zone.',
+    buyoutBtn: p => `🤝 Buy out for ${p}`, seizeBtn: '⚔️ Hostile takeover: 6 influence · $130K cash · 2 AP',
+    seizeNeedMayor: 'Takeover requires raid damage, your mayor in this zone, 6 influence, $130K cash and 2 action points.',
     close: 'Close', linkedTo: l => `linked to "${l}"`, leverage: 'leverage',
     perRoundBlack: '/round in cash', perRoundWhite: '/round in cash (white)',
     baseIncome: b => `Base income ${b}`, value: v => `value ${v}`, ownerLbl: 'owner',
@@ -832,7 +832,7 @@ function renderBoard() {
       return `<div class="cell k-${a.kind} ${own} ${hereCls}" style="grid-row:${g.r};grid-column:${g.c}"
         onclick="showAsset('${a.zone}','${a.id}')">
         <div class="cico">${a.icon}</div>
-        <div class="cnm">${an(a).slice(0, 13)}</div>
+        <div class="cnm">${an(a)}</div>
         <div class="cpr">${money(a.value)}</div>
         <div class="toks">${toks}</div></div>`;
     }
