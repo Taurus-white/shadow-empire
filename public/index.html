@@ -1,63 +1,132 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Shadow Empire</title>
-  <script>
-  (function () {
-    if (location.hostname !== 'game.rebbe47.info') return;
-    if (new URLSearchParams(location.search).get('global') === '1') return;
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0c">
+<title>SHADOW EMPIRE — прототип</title>
+<link rel="icon" href="/favicon.svg">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="/style.css">
+<script>
+(function () {
+  if (location.hostname !== 'game.rebbe47.info') return;
+  if (new URLSearchParams(location.search).get('global') === '1') return;
 
-    fetch('/cdn-cgi/trace', {cache: 'no-store'})
-      .then(function (response) { return response.text(); })
-      .then(function (trace) {
-        if (!/(^|\n)loc=RU(\n|$)/.test(trace)) return;
+  fetch('/cdn-cgi/trace', {cache: 'no-store'})
+    .then(function (r) { return r.text(); })
+    .then(function (trace) {
+      if (!/(^|\n)loc=RU(\n|$)/.test(trace)) return;
+      location.replace(
+        'https://ru-game.rebbe47.info' +
+        location.pathname + location.search + location.hash
+      );
+    })
+    .catch(function () {});
+}());
+</script>
 
-        location.replace(
-          'https://ru-game.rebbe47.info' +
-          location.pathname +
-          location.search +
-          location.hash
-        );
-      })
-      .catch(function () {});
-  }());
-  </script>
-  <link rel="icon" href="/favicon.svg">
-  <link rel="stylesheet" href="/style.css?v=20260918-1">
 </head>
 <body>
-  <main id="app">
-    <div id="ruMirrorNotice" style="margin:10px 0;padding:10px;border:1px solid #d4af37;border-radius:10px;background:#17140a;color:#f6e7a7;font-size:13px;line-height:1.35">
-      <strong>Игра не загружается из России?</strong><br>
-      Российские провайдеры ограничивают Cloudflare.
-      Откройте прямое зеркало — комнаты и игровой сервер общие.
 
-      <a id="ruMirrorLink" href="https://ru-game.rebbe47.info/" style="display:block;margin-top:8px;padding:10px;border-radius:8px;background:#d4af37;color:#111;text-decoration:none;font-weight:800">
-        🇷🇺 Открыть версию для России
-      </a>
+<div id="gate" class="gate">
+
+  <div class="gate-box">
+    <div class="langsw" id="langsw">
+      <button class="lg active" data-lang="ru">RU</button>
+      <button class="lg" data-lang="en">EN</button>
+    </div>
+    <div class="logo">SHADOW<span>EMPIRE</span></div>
+    <p class="tag" data-i18n="tag">Монополия, где кубик бросает реальный мир</p>
+    <div class="ticker-preview" id="gateTicker" data-i18n="loadingLive">загрузка живых данных…</div>
+    <input id="nameInput" maxlength="18" data-i18n-ph="namePh" placeholder="Твоё имя / псевдоним" autocomplete="off">
+
+    <div id="joinLinkBox" class="room-box hidden">
+      <div class="sh-sub" data-i18n="joiningRoom">Вход по ссылке в комнату</div>
+      <button id="joinLinkBtn" class="btn primary big" data-i18n="enter">Войти в дело</button>
     </div>
 
-    <script>
-    (function () {
-      var notice = document.getElementById('ruMirrorNotice');
-      var link = document.getElementById('ruMirrorLink');
+    <div id="gateMenu">
+      <button id="botsBtn" class="btn primary big" data-i18n="playBots">🤖 Играть с ботами</button>
+      <button id="createPubBtn" class="btn big" data-i18n="createPublic">🌐 Создать публичную комнату</button>
+      <button id="createPrivBtn" class="btn big" data-i18n="createPrivate">🔒 Создать приватную комнату</button>
+      <div id="roomsList" class="rooms-list"></div>
+    </div>
 
-      link.href =
-        'https://ru-game.rebbe47.info' +
-        location.pathname +
-        location.search +
-        location.hash;
+    <a href="/rules.html" id="rulesLinkGate" class="btn big" style="display:block;text-align:center;margin-top:8px;text-decoration:none" data-i18n="rulesBtn">Правила игры</a>
+<div id="ruMirrorNotice"
+     style="margin:8px 0 0;padding:6px 8px;border:1px solid #8f7727;border-radius:8px;background:#121107;color:#d8c985;font-size:11px;line-height:1.25;text-align:center">
+  <span>🇷🇺 Проблемы с доступом?</span>
+  <a id="ruMirrorLink"
+     href="https://ru-game.rebbe47.info/"
+     style="display:inline-block;margin-left:6px;color:#f0cf55;text-decoration:underline;font-weight:700">
+    Открыть российское зеркало
+  </a>
+</div>
 
-      if (location.hostname === 'ru-game.rebbe47.info') {
-        notice.style.display = 'none';
-      }
-    }());
-    </script>
+<script>
+(function () {
+  var notice = document.getElementById('ruMirrorNotice');
+  var link = document.getElementById('ruMirrorLink');
 
-    <input id="nameInput" autocomplete="nickname">
+  link.href =
+    'https://ru-game.rebbe47.info' +
+    location.pathname +
+    location.search +
+    location.hash;
+
+  if (location.hostname === 'ru-game.rebbe47.info') {
+    notice.style.display = 'none';
+  }
+}());
+</script>
+
+    <p class="fine" data-i18n="fine">Сатира. Все совпадения с реальными схемами — на вашей совести.</p>
+  </div>
+</div>
+
+<div id="app" class="app hidden">
+  <header class="top">
+    <div class="hud">
+      <div class="hudcell"><span class="hl" data-i18n="hWhiteL">БЕЛЫЕ</span><b id="hWhite">—</b></div>
+      <div class="hudcell black"><span class="hl" data-i18n="hBlackL">НАЛ</span><b id="hBlack">—</b></div>
+      <div class="hudcell inf"><span class="hl" data-i18n="hInfL">ВЛИЯНИЕ</span><b id="hInf">—</b></div>
+      <div class="hudcell heat"><span class="hl" data-i18n="hHeatL">ПАЛЕВО</span><b id="hHeat">—</b></div>
+    </div>
+    <div class="topbar2">
+      <span class="brand-l">SHADOW</span>
+      <div class="round"><span data-i18n="roundL">Круг</span> <b id="hRound">1</b> · <span id="hTimer" class="timer">--</span></div>
+      <div class="ap" id="hAp">◆◆◆</div>
+      <a href="/rules.html" class="rules-link" title="Rules">📖</a>
+      <div class="net">NET <b id="hNet">—</b></div>
+      <span class="brand-r">EMPIRE<sup>®</sup></span>
+    </div>
+    <div id="alertBar" class="alert hidden"></div>
+  </header>
+
+  <div id="ticker" class="ticker"><div class="tick-inner" id="tickInner"></div></div>
+
+  <main id="main">
+    <section id="tab-board" class="tab active"></section>
+    <section id="tab-map" class="tab"></section>
+    <section id="tab-crime" class="tab"></section>
+    <section id="tab-news" class="tab"></section>
+    <section id="tab-chains" class="tab"></section>
   </main>
-  <script src="/app.js?v=20260918-1"></script>
+
+  <nav class="tabs">
+    <button class="tb active" data-tab="board">🎲<span data-i18n="tabBoard">Доска</span></button>
+    <button class="tb" data-tab="map">🗺️<span data-i18n="tabMap">Карта</span></button>
+    <button class="tb" data-tab="crime">🕵️<span data-i18n="tabCrime">Схемы</span></button>
+    <button class="tb" data-tab="news">📰<span data-i18n="tabNews">Мир</span></button>
+    <button class="tb" data-tab="chains">🔗<span data-i18n="tabChains">Цепочки</span></button>
+  </nav>
+
+  <button id="endBtn" class="endbtn hidden" data-i18n="endRound">Завершить раунд</button>
+</div>
+
+<div id="sheet" class="sheet hidden"><div class="sheet-in" id="sheetIn"></div></div>
+
+<script src="/app.js"></script>
 </body>
 </html>

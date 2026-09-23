@@ -247,7 +247,21 @@ const DICT = {
     wx_cold_soft: p => `Frost ${p.t}°C`,
   },
 };
-let LANG = localStorage.getItem('se_lang') || 'ru';
+const SE_HOST = location.hostname.toLowerCase();
+const SE_LANG_KEY =
+  SE_HOST === 'ru-game.rebbe47.info'
+    ? 'se_lang_ru'
+    : 'se_lang_en';
+
+const SE_DEFAULT_LANG =
+  SE_HOST === 'ru-game.rebbe47.info' ? 'ru' : 'en';
+
+const SE_SAVED_LANG = localStorage.getItem(SE_LANG_KEY);
+
+let LANG =
+  SE_SAVED_LANG === 'ru' || SE_SAVED_LANG === 'en'
+    ? SE_SAVED_LANG
+    : SE_DEFAULT_LANG;
 const t = (key, ...args) => {
   const v = (DICT[LANG] && DICT[LANG][key]) ?? (DICT.ru[key]);
   return typeof v === 'function' ? v(...args) : v;
@@ -414,7 +428,7 @@ function logText(e) {
 }
 
 document.querySelectorAll('.langsw .lg').forEach(b => b.onclick = () => {
-  LANG = b.dataset.lang; localStorage.setItem('se_lang', LANG);
+  LANG = b.dataset.lang; localStorage.setItem(SE_LANG_KEY, LANG);
   applyStaticI18n();
   if (S) render();
   // список комнат на экране входа (gate) рендерится отдельно от render() и раньше
