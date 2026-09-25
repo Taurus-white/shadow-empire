@@ -208,7 +208,7 @@ main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 8px 16p
 @media(min-width:640px){.endbtn{max-width:500px;margin:0 auto}}
 
 /* ================= РАЗМЕТКА: доска почти во весь экран + узкие боковые колонки слева/справа ================= */
-.boardlayout{display:flex;align-items:stretch;gap:8px;width:100%;justify-content:center}
+.boardlayout{display:flex;align-items:stretch;gap:8px;width:max-content;min-width:100%;justify-content:center}
 .corner{flex:none;width:170px;max-height:calc(100vh - 180px);overflow-y:auto;
   -webkit-overflow-scrolling:touch;background:var(--bg2);border:1px solid var(--line);
   border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:8px}
@@ -226,27 +226,28 @@ main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 8px 16p
    (шире, чем выше), сетка 11×11 равномерная, поэтому все клетки одинакового размера
    (просто не квадратные, а прямоугольные — вытянутые по горизонтали) */
 .boardwrap{position:relative;width:calc(100vw - 360px);height:calc(100vh - 198px);
-  max-width:100%;flex:none;transition:transform .15s ease;transform:scale(var(--boardscale,1))}
+  flex:none;transition:width .15s ease,height .15s ease}
 .board{position:relative;width:100%;height:100%;display:grid;
   grid-template-columns:repeat(11,1fr);grid-template-rows:repeat(11,1fr);gap:2px;
   background:#07070a;border:1px solid var(--line);border-radius:14px;padding:4px}
-.cell{position:relative;background:var(--bg2);border:1px solid #2a2a34;border-radius:7px;
+.cell{position:relative;background:#f6f3ea;color:#151515;border:1px solid #aaa69b;border-radius:7px;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   font-size:11px;line-height:1.15;text-align:center;overflow:hidden;cursor:pointer;padding:2px}
-.cell:active{background:var(--bg3)}
+.cell:active{background:#dedbd2}
+.cell .cnum{position:absolute;top:2px;left:4px;font-size:8px;line-height:1;font-weight:900;color:#555;z-index:2}
 .cell .cico{font-size:26px}
-.cell .cnm{font-size:8.5px;font-weight:600;color:var(--dim);max-width:100%;flex:0 0 auto;
+.cell .cnm{font-size:8.5px;font-weight:700;color:#111;max-width:100%;flex:0 0 auto;
   white-space:normal;word-break:break-word;overflow-wrap:break-word;line-height:1.08;margin-top:1px}
 .cell .cnm.long{font-size:7.2px;line-height:1.02}
-.cell .cpr{font-size:8.5px;color:var(--gold);font-variant-numeric:tabular-nums;font-weight:700}
-.cell.corner{background:#16161f}
+.cell .cpr{font-size:8.5px;color:#704b00;font-variant-numeric:tabular-nums;font-weight:800}
+.cell.corner{background:#dce5ef;color:#111}
 
-.cell.k-legal{border-color:#2c5a3c;border-width:2px}
-.cell.k-grey{border-color:#5a4a1e;border-width:2px}
-.cell.k-crime{border-color:#5a2630;border-width:2px}
-.cell.own-me{background:#0d1710;border-color:var(--green);border-width:2px}
-.cell.own-rival{background:#170d10;border-color:var(--red);border-width:2px}
-.cell.spec{background:#12121a}
+.cell.k-legal{border-color:#26864f;border-width:2px}
+.cell.k-grey{border-color:#a77700;border-width:2px}
+.cell.k-crime{border-color:#b83242;border-width:2px}
+.cell.own-me{background:#dff5e8;border-color:#168346;border-width:3px}
+.cell.own-rival{background:#ffe4e7;border-color:#c52d42;border-width:3px}
+.cell.spec{background:#e8edf3;color:#111}
 .cell.here{outline:3px solid var(--gold);outline-offset:-3px;z-index:3;box-shadow:0 0 16px rgba(212,175,55,.5)}
 .cell .toks{position:absolute;bottom:1px;left:1px;right:1px;display:flex;gap:1px;justify-content:center;flex-wrap:wrap}
 .tok{width:17px;height:17px;border-radius:50%;border:1.5px solid #000;font-size:9px;font-weight:900;
@@ -271,6 +272,7 @@ main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 8px 16p
   box-shadow:inset 0 1px 1px rgba(255,255,255,.15)}
 .die.rolling{animation:shake .5s ease-in-out}
 @keyframes shake{0%,100%{transform:translateY(0) rotate(0)}25%{transform:translateY(-10px) rotate(-16deg)}75%{transform:translateY(-6px) rotate(14deg)}}
+.oracle-proof{font:10px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;color:#7cc6ff;background:#101923;border:1px solid #24445f;border-radius:6px;padding:4px 7px;cursor:pointer}
 .turnbadge{font-size:15px;color:var(--dim);text-align:center;font-weight:600}
 .turnbadge b{color:var(--white)}
 .turnbadge.mine b{color:var(--gold)}

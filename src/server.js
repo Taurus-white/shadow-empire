@@ -235,29 +235,31 @@ wss.on('connection', (ws) => {
 
 function tickAuction(room) {
   const au = room.auction;
-  if (!au || au.closed) return;
-  const activeBidders = room.order.filter(id => !au.passed.includes(id));
+  if (!au || au.closed) return false;
+  const activeBidders = room.order.filter(id => !(au.passed || []).includes(id));
   const everyonePassedExceptWinner = au.currentBidder && activeBidders.length <= 1;
-  if (Date.now() < au.endsAt && !everyonePassedExceptWinner) return;
+  if (Date.now() < au.endsAt && !everyonePassedExceptWinner) return false;
   au.closed = true;
   const a = G.ASSET_BY_ID[au.assetId];
   if (au.currentBidder && a) {
     const winner = room.players[au.currentBidder];
-    if (winner && winner.white >= au.currentBid) {
-      winner.white -= au.currentBid;
+    if (winner && (au.escrowed || winner.white >= au.currentBid)) {
+      if (!au.escrowed) winner.white -= au.currentBid;
       room.assets[a.id] = { ...(room.assets[a.id] || {}), owner: au.currentBidder };
+      G.checkChains(room, au.currentBidder, G.log);
       G.log(room, 'buy', { key: 'log_auction_won', params: { icon: a.icon, assetId: a.id, amt: au.currentBid }, actorId: au.currentBidder });
       G.checkWin(room);
     }
   } else if (a) {
     G.log(room, 'info', { key: 'log_auction_novone', params: { icon: a.icon, assetId: a.id } });
   }
+  room.phaseEndsAt = Date.now() + Math.max(1000, au.phaseRemainingMs || 1000);
   room.auction = null;
+  return true;
 }
 
 function tick(roomId = 'main', forced = false) {
   const room = G.getRoom(roomId);
-  G.checkWin(room);
   if (room.finished) return;
   // реакция ботов на аукционы/сделки/предложения — НЕ требует их хода,
   // боты должны участвовать в торгах всегда, а не только когда ходит бот.
@@ -265,7 +267,17 @@ function tick(roomId = 'main', forced = false) {
     const p = room.players[id];
     if (p && p.isBot && !p.eliminated) G.botReact(room, p);
   }
-  tickAuction(room);
+  const auctionClosed = tickAuction(room);
+  if (room.auction && !room.auction.closed) {
+    broadcast(roomId);
+    return;
+  }
+  if (auctionClosed) broadcast(roomId);
+  G.checkWin(room);
+  if (room.finished) {
+    broadcast(roomId);
+    return;
+  }
   const humans = room.order.filter(id => !room.players[id].isBot);
   if (!humans.length) { room.phaseEndsAt = Date.now() + G.CFG.rollMs; return; }
   const curId = G.currentPlayerId(room);

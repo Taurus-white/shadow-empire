@@ -2,6 +2,7 @@
  * SHADOW EMPIRE — ходы по кубику, клетки, карты, тюрьма, цепочки, залог банку.
  * Подключается к game.js: там остаются живой мир, доход, коррупция и следствие.
  */
+const crypto = require('crypto');
 const B = require('./board');
 
 const T = {
@@ -11,7 +12,46 @@ const T = {
   jailTurns: 2,      // «сидит 2 хода подряд, кидает на третий»
 };
 
-function rollDie() { return 1 + Math.floor(Math.random() * 6); }
+function createDiceOracle() {
+  const seed = crypto.randomBytes(32).toString('hex');
+  return {
+    seed,
+    commitment: crypto.createHash('sha256').update(seed).digest('hex'),
+    nonce: 0,
+  };
+}
+
+/**
+ * Commit/reveal oracle. Сервер публикует SHA-256 commitment до первого
+ * броска. Каждый кубик получается через HMAC-SHA256. После завершения
+ * партии seed раскрывается, и последовательность можно проверить.
+ */
+function oracleDie(room) {
+  room.diceOracle = room.diceOracle || createDiceOracle();
+  const nonce = ++room.diceOracle.nonce;
+  let attempt = 0;
+  const limit = Math.floor(0x100000000 / 6) * 6;
+  while (true) {
+    const msg = `${room.id}:${nonce}:${attempt++}`;
+    const proof = crypto.createHmac('sha256', room.diceOracle.seed)
+      .update(msg)
+      .digest();
+    const n = proof.readUInt32BE(0);
+    if (n < limit) {
+      return {
+        value: (n % 6) + 1,
+        nonce,
+        attempt: attempt - 1,
+        proof: proof.toString('hex'),
+      };
+    }
+  }
+}
+
+// Оставлено для внешних вызовов и тестов вне игровой комнаты.
+function rollDie() {
+  return crypto.randomInt(1, 7);
+}
 
 /** Тасует колоду и выдаёт следующую карту (с автоперетасовкой). */
 function drawCard(room, deckName) {
@@ -234,17 +274,27 @@ function applyCard(room, p, card, deps) {
  * иначе в хронике сначала видно последствие («стихийное бедствие»), а потом
  * сам бросок, что выглядит как перепутанный порядок событий). */
 function rollAndMove(room, p) {
-  const d1 = rollDie(), d2 = rollDie();
+  const r1 = oracleDie(room), r2 = oracleDie(room);
+  const d1 = r1.value, d2 = r2.value;
   const steps = d1 + d2;
   const from = p.pos || 0;
-  let to = (from + steps) % 40;
-  let passedStart = false;
-  if (from + steps >= 40 && to !== 0) {
-    p.white += B.FEES.passStart;
-    passedStart = true;
-  }
+  const to = (from + steps) % 40;
+  const laps = Math.floor((from + steps) / 40);
+  const passAmount = laps * B.FEES.passStart;
+  if (passAmount > 0) p.white += passAmount;
   p.pos = to;
-  return { d1, d2, steps, from, to, passedStart };
+  return {
+    d1, d2, steps, from, to,
+    passedStart: laps > 0,
+    passAmount,
+    oracle: {
+      commitment: room.diceOracle.commitment,
+      dice: [
+        { nonce: r1.nonce, attempt: r1.attempt, proof: r1.proof },
+        { nonce: r2.nonce, attempt: r2.attempt, proof: r2.proof },
+      ],
+    },
+  };
 }
 
 /** Старое API (бросок + сразу разрешение клетки) — оставлено для совместимости. */
@@ -255,7 +305,7 @@ function doRoll(room, p, deps) {
 }
 
 module.exports = {
-  T, rollDie, rollAndMove, doRoll, resolveCell, applyCard, drawCard,
+  T, createDiceOracle, rollDie, rollAndMove, doRoll, resolveCell, applyCard, drawCard,
   chargeOrSell, checkChains, chainRentMult, sendToJail,
   propertyValue, ownedProps,
 };

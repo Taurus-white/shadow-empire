@@ -339,6 +339,7 @@ const LOG_TPL = {
     log_card: p => `🃏 ${p.actor} тянет карту: «${p.card}»`,
     log_card_skipped_noprops: p => `ℹ️ у ${p.actor} нет имущества — карта не сработала`,
     log_start: p => `🏁 ${p.actor} точно на СТАРТ: +${money(p.amt)}`,
+    log_pass_start: p => `🏁 ${p.actor} прошёл СТАРТ: +${money(p.amt)}`,
     log_chain: p => `${p.first ? '🥇' : '🔗'} ${p.actor} собрал цепочку «${p.chain}»${p.first ? ' ПЕРВЫМ' : ''} — бонус ${money(p.amt)}`,
   },
   en: {
@@ -402,6 +403,7 @@ const LOG_TPL = {
     log_card: p => `🃏 ${p.actor} draws a card: "${p.card}"`,
     log_card_skipped_noprops: p => `ℹ️ ${p.actor} owns no property — card had no effect`,
     log_start: p => `🏁 ${p.actor} landed exactly on GO: +${money(p.amt)}`,
+    log_pass_start: p => `🏁 ${p.actor} passed GO: +${money(p.amt)}`,
     log_chain: p => `${p.first ? '🥇' : '🔗'} ${p.actor} collected chain "${p.chain}"${p.first ? ' FIRST' : ''} — bonus ${money(p.amt)}`,
   },
 };
@@ -851,8 +853,33 @@ window.boardZoom = dir => {
 };
 function applyBoardScale() {
   const bw = document.querySelector('#tab-board .boardwrap');
-  if (bw) bw.style.setProperty('--boardscale', boardScale);
+  if (!bw) return;
+  const baseW = Math.max(560, window.innerWidth - 360);
+  const baseH = Math.max(420, window.innerHeight - 198);
+  bw.style.width = Math.round(baseW * boardScale) + 'px';
+  bw.style.height = Math.round(baseH * boardScale) + 'px';
 }
+
+window.addEventListener('resize', () => {
+  if (S) applyBoardScale();
+});
+
+window.showDiceOracle = () => {
+  const o = S?.room?.diceOracle;
+  if (!o) return;
+  const latest = (o.rolls || []).slice(-5).reverse().map(r =>
+    `<div class="fact"><span>#${r.dice[0].nonce}/${r.dice[1].nonce} · ${r.d1}+${r.d2}</span><b>${r.dice[0].proof.slice(0, 12)}…</b></div>`
+  ).join('');
+  openSheet(`
+    <div class="sh-title">🔐 Проверяемые кубики</div>
+    <div class="sh-sub">SHA-256 commitment публикуется до первого броска. После финала seed раскрывается, и все HMAC можно воспроизвести.</div>
+    <div class="fact"><span>Commitment</span><b style="word-break:break-all">${o.commitment}</b></div>
+    <div class="fact"><span>Бросков</span><b>${o.rollCount ?? (o.rolls || []).length}</b></div>
+    ${o.revealedSeed ? `<div class="fact"><span>Revealed seed</span><b style="word-break:break-all">${o.revealedSeed}</b></div>` : `<div class="mini">Seed будет раскрыт после окончания партии.</div>`}
+    ${latest}
+    <div class="rowbtns"><button class="btn" onclick="closeSheet()">${t('close')}</button></div>
+  `);
+};
 function renderBoard() {
   if (!S.board) return;
   // ВАЖНО: раньше тут был гейт `if (overlayActive) return;`, который полностью пропускал
@@ -896,6 +923,7 @@ function renderBoard() {
       const hereCls = me && me.pos === c.i ? 'here' : '';
       return `<div class="cell k-${a.kind} ${own} ${hereCls}" style="grid-row:${g.r};grid-column:${g.c}${ownColor ? `;border-color:${ownColor}` : ''}"
         onclick="showAsset('${a.zone}','${a.id}')">
+        <div class="cnum">${c.i}</div>
         <div class="cico">${a.icon}</div>
         <div class="cnm ${an(a).length > 14 ? 'long' : ''}">${an(a)}</div>
         <div class="cpr">${money(a.value)}</div>
@@ -903,6 +931,7 @@ function renderBoard() {
     }
     const hereCls = me && me.pos === c.i ? 'here' : '';
     return `<div class="cell spec ${corner ? 'corner' : ''} ${hereCls}" style="grid-row:${g.r};grid-column:${g.c}">
+      <div class="cnum">${c.i}</div>
       <div class="cico">${specIcon(c.type)}</div><div class="cnm ${specName(c.type).length > 14 ? 'long' : ''}">${specName(c.type)}</div>
       <div class="toks">${toks}</div></div>`;
   }).join('');
@@ -985,6 +1014,7 @@ function renderBoard() {
     <div id="centerCardSlot">${overlayHtml}</div>
     <div class="turnbadge ${myTurn ? 'mine' : ''}">${myTurn ? '<b>' + t('yourTurn') + '</b>' : t('turnOf', curName)}</div>
     <div class="dice"><div class="die ${shaking}">${dieFace(d1)}</div><div class="die ${shaking}">${dieFace(d2)}</div></div>
+    ${S.room.diceOracle ? `<div class="oracle-proof" onclick="showDiceOracle()" title="Открыть журнал проверяемых бросков">🔐 dice ${S.room.diceOracle.commitment.slice(0, 12)}… · #${S.room.diceOracle.nonce}${S.room.diceOracle.revealedSeed ? ' · seed revealed' : ''}</div>` : ''}
     ${ctl}
     ${evtInfo ? `<div class="evtbox ${evtInfo.cls}">${evtInfo.text}</div>` : ''}
     ${surrenderBtn}
@@ -1075,7 +1105,7 @@ function renderAuctionCenter(au, allProps, propById) {
     <div class="cf-icon" style="font-size:44px">${a?.icon || '🏢'}</div>
     <div class="cf-text" style="font-size:14px">${a ? an(a) : ''}</div>
     <div class="big-num up">${money(au.currentBid)}</div>
-    <div class="mini">${bidder ? t('auctionLeader', bidder.name) : t('auctionNoBids')} · ${secs}s</div>
+    <div class="mini">${bidder ? t('auctionLeader', bidder.name) : t('auctionNoBids')} · <span class="auction-time">${secs}s</span></div>
     ${canBid ? `
       <div class="rowbtns">
         <button class="rollbtn" style="font-size:15px;padding:10px 18px" onclick="act('auction_bid',{amount:${nextMin}})">+${money(nextMin - au.currentBid)}</button>
@@ -1476,13 +1506,18 @@ function renderRankList() {
 setInterval(() => {
   if (!S) return;
   const unlimitedTurn = S.room.withBots && S.me && !S.me.isBot;
-  const left = Math.max(0, S.room.phaseEndsAt - Date.now());
+  const auction = S.room.auction;
+  const left = Math.max(0, (auction?.endsAt || S.room.phaseEndsAt) - Date.now());
   const sec = Math.ceil(left / 1000);
-  $('hTimer').textContent = S.room.finished ? t('finalLbl') : (unlimitedTurn ? '∞' : sec + 's');
+  $('hTimer').textContent = S.room.finished
+    ? t('finalLbl')
+    : (auction ? `🔨 ${sec}s` : (unlimitedTurn ? '∞' : sec + 's'));
   // обновляем только цифру таймера внутри доски — НЕ весь renderBoard(),
   // иначе кнопка кубика пересоздаётся 4 раза в секунду и клик по ней "срывается"
   const pb = document.querySelector('#tab-board .phasebar');
-  if (pb && !S.room.finished) pb.textContent = sec + 's';
+  if (pb && !S.room.finished && !auction) pb.textContent = sec + 's';
+  const at = document.querySelector('#tab-board .auction-time');
+  if (at && auction) at.textContent = sec + 's';
   const mt = document.querySelector('#tab-board .matchtimer');
   if (mt) mt.textContent = matchTimerText();
 }, 250);

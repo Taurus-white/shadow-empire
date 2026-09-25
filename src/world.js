@@ -17,6 +17,7 @@ const TICKERS = {
   btc:   { sym: 'BTC-USD', label: 'Bitcoin',    labelEn: 'Bitcoin',   unit: '$' },
   rub:   { sym: 'RUB=X',   label: 'USD/RUB',    labelEn: 'USD/RUB',   unit: '₽' },
   spx:   { sym: '^GSPC',   label: 'S&P 500',    labelEn: 'S&P 500',   unit: '' },
+  chips: { sym: 'SOXX',    label: 'Полупроводники', labelEn: 'Semiconductors', unit: '$' },
 };
 
 // Зоны игры = реальные точки на карте

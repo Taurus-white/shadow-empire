@@ -28,7 +28,7 @@ const CFG = {
 // warB   — как влияет война (+ выигрывает от войны, − страдает)
 // unrestB— как страдает от беспорядков (0..1)
 // wx     — тип погодной чувствительности
-const ASSETS = B.PROPS;   // 25 бизнесов = клетки доски
+const ASSETS = B.PROPS;   // 26 бизнесов = клетки доски
 const ASSET_BY_ID = Object.fromEntries(ASSETS.map(a => [a.id, a]));
 
 // ---------- МИР → МОДИФИКАТОРЫ ----------
@@ -131,6 +131,8 @@ function newRoom(id, opts = {}) {
     phase: 'roll',               // 'roll' | 'decide'
     phaseEndsAt: Date.now() + CFG.rollMs,
     lastRoll: null,              // {d1,d2,...} для анимации на клиенте
+    diceOracle: TURN.createDiceOracle(),
+    diceRolls: [],
     pendingEvent: null,          // событие клетки, ждущее решения
     decks: {},
     winner: null,
@@ -288,6 +290,7 @@ function surrenderPlayer(room, pid, reason = 'surrender') {
   const alive = room.order.filter(id => !room.players[id].isBot);
   if (room.order.length === 1) {
     room.finished = true; room.winner = room.order[0];
+    if (room.diceOracle) room.diceOracle.revealed = room.diceOracle.seed;
     log(room, 'win', { key: 'log_win_last', actorId: room.order[0] });
   }
 }
@@ -302,6 +305,7 @@ function checkWin(room) {
     .sort((a, b) => b.nw - a.nw);
   room.finished = true;
   room.winner = rank[0].id;
+  if (room.diceOracle) room.diceOracle.revealed = room.diceOracle.seed;
   log(room, 'win', { key: 'log_win_time', params: { amt: rank[0].nw }, actorId: rank[0].id });
 }
 
@@ -428,8 +432,9 @@ function doAction(room, pid, act, arg = {}) {
         log(room, 'attack', { key: 'log_raid_blocked', params: { icon: a.icon, assetId: a.id }, actorId: pid, targetId: victim.id });
         p.heat += 6;
       } else {
+        // Считаем до damaged: assetValue повреждённого объекта уже применяет скидку 30%.
+        const loss = Math.round(assetValue(a, room) * 0.3);
         st.damaged = 3;
-        const loss = Math.round(assetValue(a, room) * 0.3); // -30% стоимости актива (как в правилах), а не фиксированные $40K
         victim.white = Math.max(0, victim.white - loss);
         log(room, 'attack', { key: 'log_raid_hit', params: { icon: a.icon, assetId: a.id, amt: loss }, actorId: pid, targetId: victim.id });
       }
@@ -540,7 +545,20 @@ function doAction(room, pid, act, arg = {}) {
       // и только ПОСЛЕ этого разрешаем клетку — иначе в ленте сначала видно
       // событие клетки («попал под бедствие»), а только потом сам бросок.
       const mv = TURN.rollAndMove(room, p);
-      log(room, 'info', { key: 'log_roll', params: { d1: mv.d1, d2: mv.d2, sum: mv.steps, pos: mv.to }, actorId: pid });
+      room.diceRolls.push({
+        pid,
+        at: Date.now(),
+        d1: mv.d1,
+        d2: mv.d2,
+        dice: mv.oracle.dice,
+      });
+      log(room, 'info', { key: 'log_roll', params: {
+        d1: mv.d1, d2: mv.d2, sum: mv.steps, pos: mv.to,
+        proof: mv.oracle?.dice?.[0]?.proof?.slice(0, 10),
+      }, actorId: pid });
+      if (mv.passAmount > 0) {
+        log(room, 'buy', { key: 'log_pass_start', params: { amt: mv.passAmount }, actorId: pid });
+      }
       const event = TURN.resolveCell(room, p, deps);
       const r = { ...mv, event };
       p.rolledThisTurn = true;
@@ -688,7 +706,13 @@ function doAction(room, pid, act, arg = {}) {
       p.ap -= 1;
       room.auction = {
         assetId: a.id, startedBy: pid, currentBid: Math.round(assetValue(a, room) * 0.3),
-        currentBidder: null, passed: [], endsAt: Date.now() + 20000, closed: false,
+        currentBidder: null,
+        reservedBid: 0,
+        escrowed: true,
+        passed: [],
+        endsAt: Date.now() + 20000,
+        closed: false,
+        phaseRemainingMs: Math.max(1000, room.phaseEndsAt - Date.now()),
       };
       log(room, 'info', { key: 'log_auction_start', params: { icon: a.icon, assetId: a.id }, actorId: pid });
       return { ok: true };
@@ -698,9 +722,16 @@ function doAction(room, pid, act, arg = {}) {
       if (!au || au.closed) return fail('Аукцион не идёт');
       const bid = Math.round(arg.amount || 0);
       if (bid <= au.currentBid) return fail(`Ставка должна быть выше $${fmt(au.currentBid)}`);
-      if (p.white < bid) return fail('Не хватает белых на такую ставку');
+      const ownReserved = au.currentBidder === pid ? (au.reservedBid || 0) : 0;
+      if (p.white + ownReserved < bid) return fail('Не хватает белых на такую ставку');
+      if (au.currentBidder && au.reservedBid > 0) {
+        const previous = room.players[au.currentBidder];
+        if (previous) previous.white += au.reservedBid;
+      }
+      p.white -= bid;
       au.currentBid = bid;
       au.currentBidder = pid;
+      au.reservedBid = bid;
       au.endsAt = Date.now() + 12000; // каждая новая ставка продлевает аукцион на 12 сек
       au.passed = (au.passed || []).filter(x => x !== pid);
       log(room, 'info', { key: 'log_auction_bid', params: { amt: bid, icon: ASSET_BY_ID[au.assetId]?.icon }, actorId: pid });
@@ -709,6 +740,7 @@ function doAction(room, pid, act, arg = {}) {
     case 'auction_pass': {
       const au = room.auction;
       if (!au || au.closed) return fail('Аукцион не идёт');
+      if (au.currentBidder === pid) return fail('Лидер торгов не может пасовать');
       au.passed = au.passed || [];
       if (!au.passed.includes(pid)) au.passed.push(pid);
       return { ok: true };
@@ -966,6 +998,13 @@ function view(room, pid) {
       // он был стабильным и не менялся при каждой смене рейтинга (players сортируется по netWorth).
       currentPid: currentPlayerId(room), offers: room.offers || [],
       trades: room.trades || [], auction: room.auction || null,
+      diceOracle: room.diceOracle ? {
+        commitment: room.diceOracle.commitment,
+        nonce: room.diceOracle.nonce,
+        rollCount: (room.diceRolls || []).length,
+        rolls: room.finished ? (room.diceRolls || []) : (room.diceRolls || []).slice(-10),
+        revealedSeed: room.finished ? room.diceOracle.revealed : null,
+      } : null,
       // Раскрываем только 2 из 4 слотов цепочки (revealIdx). Остальные — только
       // синонимичная подсказка, а не точное название бизнеса. Если у игрока уже есть
       // объект, входящий в цепочку (даже "скрытый" слот) — этот слот раскрывается ему лично.
@@ -1040,4 +1079,4 @@ function view(room, pid) {
   };
 }
 
-module.exports = { CFG, ASSETS, currentPlayerId, advanceTurn, checkWin, surrenderPlayer, BOARD: B.BOARD, FEES: B.FEES, ASSET_BY_ID, rooms, getRoom, addPlayer, doAction, endRound, view, botTurn, botReact, netWorth, log, BOT_NAMES, newRoom, fmt };
+module.exports = { CFG, ASSETS, currentPlayerId, advanceTurn, checkWin, checkChains: TURN.checkChains, surrenderPlayer, BOARD: B.BOARD, FEES: B.FEES, ASSET_BY_ID, rooms, getRoom, addPlayer, doAction, endRound, view, botTurn, botReact, netWorth, log, BOT_NAMES, newRoom, fmt };

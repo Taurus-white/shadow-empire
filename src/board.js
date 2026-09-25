@@ -9,8 +9,8 @@ const MONEY_SCALE = 3;   // масштаб сумм на картах (числ�
 const M = n => Math.round(n * MONEY_SCALE);
 
 // ---------- РАСКЛАДКА 40 КЛЕТОК ----------
-// 1 START + 26 бизнесов + 6 карточных + 7 спец = 40
-// (арифметика: 28 бизнесов не влезают вместе с 6 карточными и 7 спец — взял 26)
+// 1 START + 26 бизнесов + 5 карточных + 8 остальных спец = 40
+// Одну бывшую клетку «Казна» занимает газовая электростанция.
 const CELL = {
   START: 'start',
   PROP: 'prop',            // бизнес (легал/серое/крим)
@@ -50,12 +50,13 @@ const PROPS = [
   P('dxb_hot',  'dubai', 'Отель «Мираж»',        'Hotel "Mirage"',   '🏨', 58500, 12900, 'spx',  1.2, -0.50, 0.55, 'heat', 'legal', null),
   P('dxb_gold', 'dubai', 'Золотая лавка',        'Gold shop',        '🪙', 45000, 9900, 'gold', 2.4,  0.35, 0.20, null,   'grey',  null),
   P('dxb_exch', 'dubai', 'Обменник «Хавала»',    'Hawala exchange',  '💱', 33500, 7400, 'btc',  1.5,  0.45, 0.15, null,   'crime', null),
+  P('dxb_gas',  'dubai', 'Газовая электростанция','Gas power plant',  '🔥', 60000, 13200, 'gas',  2.3,  0.35, 0.20, 'heat', 'legal', 'energy'),
 
   // Тайбэй (полупроводники)
-  P('tpe_fab',  'taipei','Завод полупроводников','Semiconductor fab','🔌', 70000, 15400, 'spx',  2.0, -0.35, 0.25, null,   'legal', 'chips'),
-  P('tpe_asm',  'taipei','Сборочный цех',        'Assembly plant',   '🧩', 51000, 11200, 'spx',  1.5, -0.25, 0.35, null,   'legal', 'chips'),
+  P('tpe_fab',  'taipei','Завод полупроводников','Semiconductor fab','🔌', 70000, 15400, 'chips',2.0, -0.35, 0.25, null,   'legal', 'chips'),
+  P('tpe_asm',  'taipei','Сборочный цех',        'Assembly plant',   '🧩', 51000, 11200, 'chips',1.5, -0.25, 0.35, null,   'legal', 'chips'),
   P('tpe_ware', 'taipei','Бондовый склад',       'Bonded warehouse', '📥', 42500, 9400, 'spx',  1.0,  0.20, 0.45, 'storm','grey',  null),
-  P('tpe_grey', 'taipei','Серый импорт чипов',   'Grey chip import', '📦', 35000, 7700, 'spx',  1.6,  0.30, 0.30, null,   'crime', null),
+  P('tpe_grey', 'taipei','Серый импорт чипов',   'Grey chip import', '📦', 35000, 7700, 'chips',1.6,  0.30, 0.30, null,   'crime', null),
 
   // Цюрих (банки)
   P('zur_bank', 'zurich','Частный банк',         'Private bank',     '🏦', 62500, 13800, 'spx',  1.4, -0.30, 0.10, null,   'legal', 'bank'),
@@ -91,9 +92,9 @@ const CHAIN_TEMPLATES = [
   {
     id: 'energy_chain',
     name: 'Чёрное золото', nameEn: 'Black gold',
-    props: ['bas_oil', 'bas_ref', 'bas_tank', 'joh_ref'],
-    clues: ['качает из скважины', 'варит в котлах', 'плавает по морю', 'плавит в слитки'],
-    cluesEn: ['pumps from a well', 'boils in tanks', 'floats on the sea', 'melts into bars'],
+    props: ['bas_oil', 'bas_ref', 'bas_tank', 'dxb_gas'],
+    clues: ['качает из скважины', 'варит в котлах', 'плавает по морю', 'сжигает газ и даёт ток'],
+    cluesEn: ['pumps from a well', 'boils in tanks', 'floats on the sea', 'burns gas to make power'],
     rentMult: 1.9, bonus: 120000,
   },
   {
@@ -205,17 +206,20 @@ function buildBoard() {
   cells[15] = { type: CELL.PAY_ROOF,     name: 'Заплати крыше',      nameEn: 'Pay the roof' };
   cells[25] = { type: CELL.RIOTS,        name: 'Беспорядки в городе',nameEn: 'Riots in the city' };
   cells[35] = { type: CELL.DISASTER,     name: 'Стихийное бедствие', nameEn: 'Natural disaster' };
-  // 6 карточных клеток (~1 на каждые 6–7 клеток)
-  [2, 7, 17, 22, 27, 33].forEach((i, k) => {
+  // 5 карточных клеток. Бывшая «Казна» №27 стала газовой электростанцией.
+  [2, 7, 17, 22, 33].forEach((i, k) => {
     cells[i] = k % 2 === 0
       ? { type: CELL.CARD_CHANCE, name: 'Шанс',              nameEn: 'Chance' }
       : { type: CELL.CARD_CHEST,  name: 'Общественная казна', nameEn: 'Community Chest' };
   });
-  // остальное — бизнесы по порядку
+  cells[27] = { type: CELL.PROP, propId: 'dxb_gas' };
+  // Остальное — бизнесы по порядку; уже поставленный dxb_gas второй раз не используем.
+  const placed = new Set(cells.filter(Boolean).map(c => c.propId).filter(Boolean));
+  const remaining = PROPS.filter(prop => !placed.has(prop.id));
   let pi = 0;
   for (let i = 0; i < 40; i++) {
     if (cells[i]) continue;
-    const prop = PROPS[pi++];
+    const prop = remaining[pi++];
     cells[i] = prop
       ? { type: CELL.PROP, propId: prop.id }
       : { type: CELL.FREE_PARKING, name: 'Пустырь', nameEn: 'Vacant lot' };
