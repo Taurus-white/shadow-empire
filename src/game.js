@@ -752,8 +752,9 @@ function doAction(room, pid, act, arg = {}) {
       const value = assetValue(a, room);
       const loan = Math.round(value * CFG.mortgageRate);
       const cost = Math.round(loan * (1 + CFG.mortgageFee));
-      st.mortgage = { loan, cost, value, round: room.round };
-      p.black += loan;   // банк выдаёт нал
+      const currency = a.kind === 'crime' ? 'black' : 'white';
+      st.mortgage = { loan, cost, value, round: room.round, currency };
+      p[currency] += loan;
       room.offers = (room.offers || []).filter(o => o.assetId !== a.id);
       room.trades = (room.trades || []).filter(tr => tr.giveAssetId !== a.id && tr.wantAssetId !== a.id);
       log(room, 'law', { key: 'log_mortgage', params: { icon: a.icon, assetId: a.id, amt: loan, cost }, actorId: pid });
@@ -765,10 +766,10 @@ function doAction(room, pid, act, arg = {}) {
       if (!st || st.owner !== pid) return fail('Это не твой актив');
       if (!st.mortgage) return fail('Объект не в залоге');
       const cost = st.mortgage.cost;
-      if (p.black + p.white < cost) return fail(`Для выкупа из залога нужно $${fmt(cost)} (нал + безнал 1:1)`);
-      const fromBlack = Math.min(p.black, cost);
-      p.black -= fromBlack;
-      p.white -= (cost - fromBlack);
+      const currency = st.mortgage.currency || (a.kind === 'crime' ? 'black' : 'white');
+      const label = currency === 'black' ? 'нала' : 'безнала';
+      if (p[currency] < cost) return fail(`Для выкупа из залога нужно $${fmt(cost)} ${label}`);
+      p[currency] -= cost;
       delete st.mortgage;
       log(room, 'law', { key: 'log_redeem', params: { icon: a.icon, assetId: a.id, amt: cost }, actorId: pid });
       return { ok: true, cost };

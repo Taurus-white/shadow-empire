@@ -19,7 +19,7 @@ const DICT = {
   ru: {
     tag: 'Монополия, где кубик бросает реальный мир',
     hNetL: 'КАПИТАЛ', hNetTip: 'Капитал = белые + нал (1:1) + стоимость активов − долги и залоги',
-    mortgageBtn: v => `🏦 Залог банку: +${v} нал`, redeemBtn: c => `🏦 Выкупить из залога за ${c}`,
+    mortgageBtn: (v, currency) => `🏦 Залог банку: +${v} ${currency === 'black' ? 'нала' : 'безнала'}`, redeemBtn: c => `🏦 Выкупить из залога за ${c}`,
     ownAuctionBtn: '🔨 Выставить на аукцион', ownAuctionTitle: '🔨 Аукцион своего объекта', ownAuctionSub: 'Другие игроки делают ставки белыми. Победитель платит тебе, объект переходит к нему. Без ставок объект остаётся у тебя.',
     ownAuctionStart: 'Стартовая цена, $ (от 30% до 300% стоимости)', ownAuctionGo: 'Начать торги',
     mortgagedTag: 'В ЗАЛОГЕ', mortgageInfo: (l, c) => `Банк выдал ${l}. Выкуп: ${c} (залог + 25%). Пока объект в залоге: дохода нет, продать, обменять и захватить его нельзя.`,
@@ -145,7 +145,7 @@ const DICT = {
   en: {
     tag: 'Monopoly where the dice is the real world',
     hNetL: 'WORTH', hNetTip: 'Net worth = white + cash (1:1) + asset value − debts and mortgages',
-    mortgageBtn: v => `🏦 Mortgage to bank: +${v} cash`, redeemBtn: c => `🏦 Redeem mortgage for ${c}`,
+    mortgageBtn: (v, currency) => `🏦 Mortgage to bank: +${v} ${currency === 'black' ? 'cash' : 'white money'}`, redeemBtn: c => `🏦 Redeem mortgage for ${c}`,
     ownAuctionBtn: '🔨 Put up for auction', ownAuctionTitle: '🔨 Auction your property', ownAuctionSub: 'Other players bid with white money. The winner pays you and gets the asset. No bids — you keep it.',
     ownAuctionStart: 'Starting price, $ (30% to 300% of value)', ownAuctionGo: 'Start bidding',
     mortgagedTag: 'MORTGAGED', mortgageInfo: (l, c) => `The bank paid ${l}. Redeem for ${c} (loan + 25%). While mortgaged: no income; it cannot be sold, traded or seized.`,
@@ -1351,9 +1351,10 @@ window.showAsset = (zid, aid) => {
     const rate = 0.45 + Math.max(0, Math.min(100, S.me?.rep || 50)) / 100 * 0.45;
     const bankPrice = Math.round(a.value * rate);
     const loanNow = Math.round(a.value * 0.85);
+    const mortgageCurrency = a.kind === 'crime' ? 'black' : 'white';
     const auctionOwn = !S.room.auction
       ? `<div class="rowbtns"><button class="btn" onclick="openOwnAuctionSheet('${a.id}')">${t('ownAuctionBtn')}</button></div>` : '';
-    btns = `<div class="rowbtns"><button class="btn primary" onclick="act('mortgage',{assetId:'${a.id}'})">${t('mortgageBtn', money(loanNow))}</button></div>
+    btns = `<div class="rowbtns"><button class="btn primary" onclick="act('mortgage',{assetId:'${a.id}'})">${t('mortgageBtn', money(loanNow), mortgageCurrency)}</button></div>
       ${auctionOwn}
       <div class="rowbtns"><button class="btn" onclick="act('sell_bank',{assetId:'${a.id}'})">${t('sellBank', money(bankPrice))}</button></div>
       <div class="rowbtns"><button class="btn" onclick="act('offer_asset',{assetId:'${a.id}',price:${Math.round(a.value * 1.1)}})">${t('offerPlayers')} ${money(Math.round(a.value * 1.1))}</button></div>
