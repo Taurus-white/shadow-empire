@@ -236,7 +236,7 @@ wss.on('connection', (ws) => {
 function tickAuction(room) {
   const au = room.auction;
   if (!au || au.closed) return false;
-  const activeBidders = room.order.filter(id => !(au.passed || []).includes(id));
+  const activeBidders = room.order.filter(id => !(au.passed || []).includes(id) && id !== au.sellerId);
   const everyonePassedExceptWinner = au.currentBidder && activeBidders.length <= 1;
   if (Date.now() < au.endsAt && !everyonePassedExceptWinner) return false;
   au.closed = true;
@@ -245,6 +245,12 @@ function tickAuction(room) {
     const winner = room.players[au.currentBidder];
     if (winner && (au.escrowed || winner.white >= au.currentBid)) {
       if (!au.escrowed) winner.white -= au.currentBid;
+      // Аукцион собственного объекта: выручка уходит продавцу (ставка победителя уже зарезервирована)
+      if (au.sellerId) {
+        const seller = room.players[au.sellerId];
+        if (seller) seller.white += au.currentBid;
+        room.offers = (room.offers || []).filter(o => o.assetId !== a.id);
+      }
       room.assets[a.id] = { ...(room.assets[a.id] || {}), owner: au.currentBidder };
       G.checkChains(room, au.currentBidder, G.log);
       G.log(room, 'buy', { key: 'log_auction_won', params: { icon: a.icon, assetId: a.id, amt: au.currentBid }, actorId: au.currentBidder });

@@ -53,10 +53,10 @@ const PROPS = [
   P('dxb_gas',  'dubai', 'Газовая электростанция','Gas power plant',  '🔥', 60000, 13200, 'gas',  2.3,  0.35, 0.20, 'heat', 'legal', 'energy'),
 
   // Тайбэй (полупроводники)
-  P('tpe_fab',  'taipei','Завод полупроводников','Semiconductor fab','🔌', 70000, 15400, 'chips',2.0, -0.35, 0.25, null,   'legal', 'chips'),
-  P('tpe_asm',  'taipei','Сборочный цех',        'Assembly plant',   '🧩', 51000, 11200, 'chips',1.5, -0.25, 0.35, null,   'legal', 'chips'),
+  P('tpe_fab',  'taipei','Завод полупроводников','Semiconductor fab','🔌', 70000, 15400, 'chips',  2.0, -0.35, 0.25, null,   'legal', 'chips'),
+  P('tpe_asm',  'taipei','Сборочный цех',        'Assembly plant',   '🧩', 51000, 11200, 'chips',  1.5, -0.25, 0.35, null,   'legal', 'chips'),
   P('tpe_ware', 'taipei','Бондовый склад',       'Bonded warehouse', '📥', 42500, 9400, 'spx',  1.0,  0.20, 0.45, 'storm','grey',  null),
-  P('tpe_grey', 'taipei','Серый импорт чипов',   'Grey chip import', '📦', 35000, 7700, 'chips',1.6,  0.30, 0.30, null,   'crime', null),
+  P('tpe_grey', 'taipei','Серый импорт чипов',   'Grey chip import', '📦', 35000, 7700, 'chips',  1.6,  0.30, 0.30, null,   'crime', null),
 
   // Цюрих (банки)
   P('zur_bank', 'zurich','Частный банк',         'Private bank',     '🏦', 62500, 13800, 'spx',  1.4, -0.30, 0.10, null,   'legal', 'bank'),

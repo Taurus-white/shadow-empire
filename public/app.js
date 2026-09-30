@@ -18,6 +18,16 @@ document.addEventListener('keydown', e => {
 const DICT = {
   ru: {
     tag: 'Монополия, где кубик бросает реальный мир',
+    hNetL: 'КАПИТАЛ', hNetTip: 'Капитал = белые + нал (1:1) + стоимость активов − долги и залоги',
+    mortgageBtn: v => `🏦 Залог банку: +${v} нал`, redeemBtn: c => `🏦 Выкупить из залога за ${c}`,
+    ownAuctionBtn: '🔨 Выставить на аукцион', ownAuctionTitle: '🔨 Аукцион своего объекта', ownAuctionSub: 'Другие игроки делают ставки белыми. Победитель платит тебе, объект переходит к нему. Без ставок объект остаётся у тебя.',
+    ownAuctionStart: 'Стартовая цена, $ (от 30% до 300% стоимости)', ownAuctionGo: 'Начать торги',
+    mortgagedTag: 'В ЗАЛОГЕ', mortgageInfo: (l, c) => `Банк выдал ${l}. Выкуп: ${c} (залог + 25%). Пока объект в залоге: дохода нет, продать, обменять и захватить его нельзя.`,
+    condTitle: 'УСЛОВИЯ ЗАХВАТА', condDamaged: 'Актив повреждён рейдом', condMyRoof: 'Своя крыша', condTheirRoof: 'У владельца нет крыши', condMyMayor: 'Свой мэр в зоне',
+    condInf: n => `Влияние ≥ ${n}`, condCash: c => `Нал ≥ ${c}`, condAp: n => `Действий ≥ ${n}◆`, condFree: 'Объект не в залоге',
+    stMayor: (z, n, s) => `🕴️ Твой мэр · ${z}: ${n} кр.${s ? ' · щит от конфискации' : ''}`, stRivalMayor: (z, n) => `🕴️ Мэр куплен · ${z}: ${n} кр.`,
+    stInsider: n => `📋 Инспектор: ${n} кр.`, stDamaged: (nm, n) => `🔥 Последствия рейда · ${nm}: ${n} кр.`, stFrozen: (nm, n) => `🧊 Проверка · ${nm}: ${n} кр.`,
+    stLock: n => `🚫 Крышу нанять нельзя: ${n} кр.`, stCase: n => `📢 Дело: ${n} кр.`, stJail: n => `⛓️ Тюрьма: ${n} ход.`, stSkip: n => `⏭️ Пропуск ходов: ${n}`,
     loadingLive: 'загрузка живых данных…',
     namePh: 'Твоё имя / псевдоним',
     enter: 'Войти в дело',
@@ -43,8 +53,8 @@ const DICT = {
     legal: 'ЛЕГАЛ', grey: 'СЕРОЕ', crime: 'КРИМ',
     buy: cost => `Купить ${cost}`, buyBlack: 'налом', later: 'Позже',
     auditBtn: '🚔 Проверка $50K нал', raidBtn: '🔥 Рейд $90K нал',
-    buyoutBtn: p => `🤝 Выкупить за ${p}`, seizeBtn: '⚔️ Рейдерский захват (нужен свой мэр) 6 влияния + $130K нал',
-    seizeNeedMayor: 'Захват возможен только если актив повреждён рейдом И у тебя куплен мэр этой зоны.',
+    buyoutBtn: () => '🤝 Торговля', seizeBtn: '⚔️ Рейдерский захват · 6 влияния + $130K нал',
+    seizeNeedMayor: 'Захват возможен, только если актив повреждён рейдом, у тебя есть своя крыша и свой мэр зоны, а у владельца крыши нет.',
     needAp: n => `действий в раунде (${n}◆)`, needInfluence: n => `влияния (${n})`, needCash: c => `нала (${c})`,
     seizeMissing: m => `Не хватает для захвата: ${m}. Вернись когда накопится.`,
     close: 'Закрыть', linkedTo: l => `привязан к «${l}»`, leverage: 'плечо',
@@ -61,7 +71,7 @@ const DICT = {
     heatRepTitle: (h, r) => `ПАЛЕВО ${h}/100 · РЕПУТАЦИЯ ${r}`,
     heatCostHint: c => `Обслуживание палева в этом раунде: −${c}. Выше 70 — рейды полиции и утечки в прессу.`,
     secBlackNoCrime: 'ДОБЫТЬ НАЛ БЕЗ КРИМ-БИЗНЕСА',
-    skimTitle: 'Провести доход мимо кассы', skimDesc: 'часть белых → нал (конверсия 55%), работает даже если у тебя только легальные активы',
+    skimTitle: 'Провести доход мимо кассы', skimDesc: 'часть белых → нал (конверсия 85%), работает даже если у тебя только легальные активы',
     kickbackTitle: 'Откат с госконтракта', kickbackDesc: 'подрядчик по твоему тендеру заносит нал сверху',
     secMoney: 'ДЕНЬГИ',
     launderTitle: b => `Отмыть весь нал (${b})`, launderDesc: f => `комиссия ${f}% · нал нельзя вложить в легальное`,
@@ -71,13 +81,13 @@ const DICT = {
     protTitle: on => `Нанять крышу ${on}`, protDesc: 'отбивает рейды, гасит убытки от беспорядков на 65%',
     inspTitle: on => `Купить инспектора ${on}`, inspDesc: '−25% к шансу собрать улику на тебя, 3 раунда',
     secMayor: 'КОРРУПЦИЯ · ВЗЯТКА МЭРУ', secTender: 'КОРРУПЦИЯ · ГОСКОНТРАКТЫ',
-    mayorDesc: 'твои налоги −30%, конкурентам +18% издержек',
+    mayorDesc: 'твои объекты в зоне +30% дохода, конкурентам −18%; 1 раз за срок отменяет конфискацию твоего объекта',
     tenderTitle: z => `Тендер · ${z}`, tenderDesc: 'гарантированный поток $26–40K/раунд',
     attackHint: 'Атаки на конкурентов (проверка/рейд) — на вкладке «Карта», тапни чужой актив.',
     noRivals: 'Пока нет соперников.',
-    skimSheetTitle: '🧾 Мимо кассы', skimSheetSub: 'Конверсия 55% белых → нал. Работает даже если у тебя нет ни одного крим-актива.',
+    skimSheetTitle: '🧾 Мимо кассы', skimSheetSub: 'Конверсия 85% белых → нал. Работает даже если у тебя нет ни одного крим-актива.',
     skimTooLittle: 'Слишком мало белых, чтобы было что скрывать', cancel: 'Отмена',
-    snitchTitle: '🐍 Сделка со следствием', snitchSub: 'Твои улики обнулятся, палево −30. Но репутация −15, и он узнает, кто сдал.',
+    snitchTitle: '🐍 Сделка со следствием', snitchSub: 'Твои улики обнулятся, палево −30, но репутация −15, и он узнает, кто сдал. Цена: ты теряешь крышу (3 круга нельзя нанять новую) и один криминальный бизнес — а если его нет, откупаешься от братков $40K налом.',
     capitalLbl: 'капитал', heatLbl: 'палево', evidenceToHim: '+2 улики ему',
     updated: t => `Обновлено ${t}`, liveData: '🟢 живые данные', cachedData: '🟡 кэш',
     realNewsHint: 'это настоящие заголовки, они уже влияют на твой доход.',
@@ -96,11 +106,11 @@ const DICT = {
     seizeSheetTitle: '⚔️ Силовой захват', seizeSheetSub: 'Выбери чужой актив — захват стоит дорого и сильно поднимает палево',
     zoneEffect: e => `— эффект: ${e}`,
     effWar: 'военная премия к сырью, минус недвижимость', effUnrest: 'беспорядки давят аренду', effCalm: 'спокойно',
-    capitalFormula: 'Капитал = белые + нал×0.6 + стоимость активов по текущему рынку.', tierLbl: 'уровень',
+    capitalFormula: 'Капитал = белые + нал (1:1) + стоимость активов по рынку − долги и залоги.', tierLbl: 'уровень',
     hiddenMoneyHint: 'Капитал всех игроков виден всем — так проще понять, кто реально отстаёт.',
     finalLbl: 'финал',
     tagWAR: 'ВОЙНА', tagUNREST: 'БУНТ', tagCRIME: 'КРИМ',
-    rentLbl: 'аренда', rollBtn: '🎲 Бросить кубик', rolling: 'Кубик…', notYourTurn: 'Ход соперника',
+    rentLbl: 'аренда', rollBtn: '🎲 Бросить кубик (◆1)', rolling: 'Кубик…', notYourTurn: 'Ход соперника',
     yourTurn: 'ТВОЙ ХОД', turnOf: n => `Ходит ${n}`, endTurnBtn: 'Завершить ход',
     inJailMsg: n => `⛓️ В тюрьме: ${n} ход(а). Залог или ждать`, payBail: b => `Заплатить залог ${b}`,
     myAssets: 'МОИ ОБЪЕКТЫ (цена по рынку)', noAssets: 'Объектов пока нет — вставай на клетку и покупай',
@@ -118,8 +128,9 @@ const DICT = {
     f_war: p => `Военный фон (${p.n} новостей)`,
     f_unrest: p => `Беспорядки (${p.n} новостей)`,
     f_unrest_shielded: p => `Беспорядки (${p.n} новостей) — крыша гасит`,
-    f_mayor_own: () => 'Мэр «свой» — налоги ниже',
-    f_mayor_rival: () => `Мэр куплен кем-то другим`,
+    f_mayor_own: () => 'Мэр «свой» — доход +30%',
+    f_mayor_rival: () => `Мэр куплен кем-то другим — доход −18%`,
+    f_mortgaged: () => 'В залоге у банка — дохода нет',
     f_frozen: p => `Актив заморожен проверкой (${p.n})`,
     f_damaged: p => `Повреждён после рейда (${p.n})`,
     f_protection: () => 'Крыша: −$12K обслуживание',
@@ -133,6 +144,16 @@ const DICT = {
   },
   en: {
     tag: 'Monopoly where the dice is the real world',
+    hNetL: 'WORTH', hNetTip: 'Net worth = white + cash (1:1) + asset value − debts and mortgages',
+    mortgageBtn: v => `🏦 Mortgage to bank: +${v} cash`, redeemBtn: c => `🏦 Redeem mortgage for ${c}`,
+    ownAuctionBtn: '🔨 Put up for auction', ownAuctionTitle: '🔨 Auction your property', ownAuctionSub: 'Other players bid with white money. The winner pays you and gets the asset. No bids — you keep it.',
+    ownAuctionStart: 'Starting price, $ (30% to 300% of value)', ownAuctionGo: 'Start bidding',
+    mortgagedTag: 'MORTGAGED', mortgageInfo: (l, c) => `The bank paid ${l}. Redeem for ${c} (loan + 25%). While mortgaged: no income; it cannot be sold, traded or seized.`,
+    condTitle: 'SEIZURE CONDITIONS', condDamaged: 'Asset damaged by a raid', condMyRoof: 'Your own protection', condTheirRoof: 'Owner has no protection', condMyMayor: 'Your mayor in the zone',
+    condInf: n => `Influence ≥ ${n}`, condCash: c => `Cash ≥ ${c}`, condAp: n => `Actions ≥ ${n}◆`, condFree: 'Asset not mortgaged',
+    stMayor: (z, n, s) => `🕴️ Your mayor · ${z}: ${n} laps${s ? ' · confiscation shield' : ''}`, stRivalMayor: (z, n) => `🕴️ Mayor bought · ${z}: ${n} laps`,
+    stInsider: n => `📋 Inspector: ${n} laps`, stDamaged: (nm, n) => `🔥 Raid aftermath · ${nm}: ${n} laps`, stFrozen: (nm, n) => `🧊 Audit · ${nm}: ${n} laps`,
+    stLock: n => `🚫 Cannot hire protection: ${n} laps`, stCase: n => `📢 Case: ${n} laps`, stJail: n => `⛓️ Jail: ${n} turns`, stSkip: n => `⏭️ Skipped turns: ${n}`,
     loadingLive: 'loading live data…',
     namePh: 'Your name / alias',
     enter: 'Enter the business',
@@ -158,8 +179,8 @@ const DICT = {
     legal: 'LEGAL', grey: 'GREY', crime: 'CRIME',
     buy: cost => `Buy ${cost}`, buyBlack: 'in cash', later: 'Later',
     auditBtn: '🚔 Audit $50K cash', raidBtn: '🔥 Raid $90K cash',
-    buyoutBtn: p => `🤝 Buy out for ${p}`, seizeBtn: '⚔️ Hostile takeover (needs your mayor) 6 influence + $130K cash',
-    seizeNeedMayor: 'Takeover only works if the asset is raid-damaged AND you own the mayor of this zone.',
+    buyoutBtn: () => '🤝 Trade', seizeBtn: '⚔️ Hostile takeover · 6 influence + $130K cash',
+    seizeNeedMayor: 'Takeover needs a raid-damaged asset, your own protection and your own mayor of the zone, and the owner must have no protection.',
     needAp: n => `actions this round (${n}◆)`, needInfluence: n => `influence (${n})`, needCash: c => `cash (${c})`,
     seizeMissing: m => `Missing to seize: ${m}. Come back once you have it.`,
     close: 'Close', linkedTo: l => `linked to "${l}"`, leverage: 'leverage',
@@ -176,7 +197,7 @@ const DICT = {
     heatRepTitle: (h, r) => `HEAT ${h}/100 · REPUTATION ${r}`,
     heatCostHint: c => `Heat upkeep this round: −${c}. Above 70 — police raids and press leaks.`,
     secBlackNoCrime: 'GET CASH WITHOUT CRIME BUSINESS',
-    skimTitle: 'Skim revenue off the books', skimDesc: 'part of your cash → black money (55% rate), works even with only legal assets',
+    skimTitle: 'Skim revenue off the books', skimDesc: 'part of your cash → black money (85% rate), works even with only legal assets',
     kickbackTitle: 'Kickback from gov contract', kickbackDesc: 'your contractor kicks back cash on top',
     secMoney: 'MONEY',
     launderTitle: b => `Launder all black money (${b})`, launderDesc: f => `fee ${f}% · black money can't buy legal assets`,
@@ -186,13 +207,13 @@ const DICT = {
     protTitle: on => `Hire protection ${on}`, protDesc: 'blocks raids, cuts unrest losses by 65%',
     inspTitle: on => `Buy an inspector ${on}`, inspDesc: '−25% chance of evidence against you, 3 rounds',
     secMayor: 'CORRUPTION · BRIBE MAYOR', secTender: 'CORRUPTION · GOV CONTRACTS',
-    mayorDesc: 'your taxes −30%, rivals\' costs +18%',
+    mayorDesc: 'your assets in the zone +30% income, rivals −18%; once per term cancels a confiscation of your asset',
     tenderTitle: z => `Contract · ${z}`, tenderDesc: 'guaranteed $26–40K/round',
     attackHint: 'Attacks on rivals (audit/raid) are on the Map tab — tap a rival\'s asset.',
     noRivals: 'No rivals yet.',
-    skimSheetTitle: '🧾 Off the books', skimSheetSub: '55% conversion rate cash→black. Works even with zero crime assets.',
+    skimSheetTitle: '🧾 Off the books', skimSheetSub: '85% conversion rate cash→black. Works even with zero crime assets.',
     skimTooLittle: 'Too little cash to hide anything', cancel: 'Cancel',
-    snitchTitle: '🐍 Deal with prosecutors', snitchSub: 'Your evidence resets, heat −30. But reputation −15, and they\'ll know who snitched.',
+    snitchTitle: '🐍 Deal with prosecutors', snitchSub: 'Your evidence resets, heat −30, but reputation −15 and they\'ll know who snitched. Price: you lose your protection (cannot hire it for 3 rounds) and one crime business — with none, you pay the gangsters $40K cash.',
     capitalLbl: 'net worth', heatLbl: 'heat', evidenceToHim: '+2 evidence on them',
     updated: t => `Updated ${t}`, liveData: '🟢 live data', cachedData: '🟡 cached',
     realNewsHint: 'these are real headlines already affecting your income.',
@@ -211,11 +232,11 @@ const DICT = {
     seizeSheetTitle: '⚔️ Forced seizure', seizeSheetSub: 'Pick a rival asset — seizing is expensive and raises heat a lot',
     zoneEffect: e => `— effect: ${e}`,
     effWar: 'war premium on commodities, real estate down', effUnrest: 'unrest hurts rent', effCalm: 'calm',
-    capitalFormula: 'Net worth = cash + black×0.6 + market value of assets.', tierLbl: 'tier',
+    capitalFormula: 'Net worth = white + cash (1:1) + market value of assets − debts and mortgages.', tierLbl: 'tier',
     hiddenMoneyHint: 'Everyone\'s net worth is visible to all — easier to see who is really behind.',
     finalLbl: 'final',
     tagWAR: 'WAR', tagUNREST: 'UNREST', tagCRIME: 'CRIME',
-    rentLbl: 'rent', rollBtn: '🎲 Roll dice', rolling: 'Rolling…', notYourTurn: "Opponent's turn",
+    rentLbl: 'rent', rollBtn: '🎲 Roll dice (◆1)', rolling: 'Rolling…', notYourTurn: "Opponent's turn",
     yourTurn: 'YOUR TURN', turnOf: n => `${n} is playing`, endTurnBtn: 'End turn',
     inJailMsg: n => `⛓️ In jail: ${n} turn(s). Pay bail or wait`, payBail: b => `Pay bail ${b}`,
     myAssets: 'MY PROPERTIES (live market price)', noAssets: 'No properties yet — land on a cell and buy',
@@ -233,8 +254,9 @@ const DICT = {
     f_war: p => `War headlines (${p.n})`,
     f_unrest: p => `Unrest (${p.n} headlines)`,
     f_unrest_shielded: p => `Unrest (${p.n} headlines) — protection absorbs it`,
-    f_mayor_own: () => 'Mayor is "yours" — lower taxes',
-    f_mayor_rival: () => `Mayor bought by someone else`,
+    f_mayor_own: () => 'Mayor is "yours" — income +30%',
+    f_mayor_rival: () => `Mayor bought by someone else — income −18%`,
+    f_mortgaged: () => 'Mortgaged to the bank — no income',
     f_frozen: p => `Asset frozen by audit (${p.n})`,
     f_damaged: p => `Damaged after a raid (${p.n})`,
     f_protection: () => 'Protection: −$12K upkeep',
@@ -247,21 +269,7 @@ const DICT = {
     wx_cold_soft: p => `Frost ${p.t}°C`,
   },
 };
-const SE_HOST = location.hostname.toLowerCase();
-const SE_LANG_KEY =
-  SE_HOST === 'ru-game.rebbe47.info'
-    ? 'se_lang_ru'
-    : 'se_lang_en';
-
-const SE_DEFAULT_LANG =
-  SE_HOST === 'ru-game.rebbe47.info' ? 'ru' : 'en';
-
-const SE_SAVED_LANG = localStorage.getItem(SE_LANG_KEY);
-
-let LANG =
-  SE_SAVED_LANG === 'ru' || SE_SAVED_LANG === 'en'
-    ? SE_SAVED_LANG
-    : SE_DEFAULT_LANG;
+let LANG = localStorage.getItem('se_lang') || 'ru';
 const t = (key, ...args) => {
   const v = (DICT[LANG] && DICT[LANG][key]) ?? (DICT.ru[key]);
   return typeof v === 'function' ? v(...args) : v;
@@ -340,6 +348,12 @@ const LOG_TPL = {
     log_card_skipped_noprops: p => `ℹ️ у ${p.actor} нет имущества — карта не сработала`,
     log_start: p => `🏁 ${p.actor} точно на СТАРТ: +${money(p.amt)}`,
     log_pass_start: p => `🏁 ${p.actor} прошёл СТАРТ: +${money(p.amt)}`,
+    log_mortgage: p => `🏦 ${p.actor} заложил банку ${p.icon} ${p.asset}: +${money(p.amt)} нал (выкуп ${money(p.cost)})`,
+    log_redeem: p => `🏦 ${p.actor} выкупил из залога ${p.icon} ${p.asset} за ${money(p.amt)}`,
+    log_skip_noap: p => `⏭️ ${p.actor} потратил все очки действий до броска — бросок пропущен`,
+    log_mayor_shield: p => `🕴️ Мэр зоны спас ${p.icon} ${p.asset} у ${p.actor}: конфискация отменена`,
+    log_snitch_lost: p => `🐍 ${p.actor} расплатился за донос: потерял ${p.icon} ${p.asset} и крышу`,
+    log_snitch_fine: p => `🐍 ${p.actor} откупился от братков за ${money(p.amt)} нала и потерял крышу`,
     log_chain: p => `${p.first ? '🥇' : '🔗'} ${p.actor} собрал цепочку «${p.chain}»${p.first ? ' ПЕРВЫМ' : ''} — бонус ${money(p.amt)}`,
   },
   en: {
@@ -404,6 +418,12 @@ const LOG_TPL = {
     log_card_skipped_noprops: p => `ℹ️ ${p.actor} owns no property — card had no effect`,
     log_start: p => `🏁 ${p.actor} landed exactly on GO: +${money(p.amt)}`,
     log_pass_start: p => `🏁 ${p.actor} passed GO: +${money(p.amt)}`,
+    log_mortgage: p => `🏦 ${p.actor} mortgaged ${p.icon} ${p.asset}: +${money(p.amt)} cash (redeem ${money(p.cost)})`,
+    log_redeem: p => `🏦 ${p.actor} redeemed ${p.icon} ${p.asset} for ${money(p.amt)}`,
+    log_skip_noap: p => `⏭️ ${p.actor} spent all actions before rolling — roll skipped`,
+    log_mayor_shield: p => `🕴️ The zone mayor saved ${p.icon} ${p.asset} of ${p.actor}: confiscation cancelled`,
+    log_snitch_lost: p => `🐍 ${p.actor} paid for snitching: lost ${p.icon} ${p.asset} and protection`,
+    log_snitch_fine: p => `🐍 ${p.actor} paid the gangsters ${money(p.amt)} cash and lost protection`,
     log_chain: p => `${p.first ? '🥇' : '🔗'} ${p.actor} collected chain "${p.chain}"${p.first ? ' FIRST' : ''} — bonus ${money(p.amt)}`,
   },
 };
@@ -430,7 +450,7 @@ function logText(e) {
 }
 
 document.querySelectorAll('.langsw .lg').forEach(b => b.onclick = () => {
-  LANG = b.dataset.lang; localStorage.setItem(SE_LANG_KEY, LANG);
+  LANG = b.dataset.lang; localStorage.setItem('se_lang', LANG);
   applyStaticI18n();
   if (S) render();
   // список комнат на экране входа (gate) рендерится отдельно от render() и раньше
@@ -605,6 +625,42 @@ function act(a, arg) { ws.send(JSON.stringify({ type: 'action', act: a, arg: arg
 window.act = act;
 
 /* ---------- render ---------- */
+// Остатки сроков всех убывающих эффектов (в кругах): мэр, последствия рейда, проверка,
+// инспектор, запрет крыши после доноса, дело, тюрьма.
+function renderStatusStrip() {
+  let el = $('statusStrip');
+  if (!el) {
+    const al = $('alertBar');
+    if (!al || !al.parentNode) return;
+    el = document.createElement('div');
+    el.id = 'statusStrip';
+    el.className = 'statusstrip hidden';
+    al.parentNode.insertBefore(el, al.nextSibling);
+  }
+  const me = S.me;
+  if (!me) { el.className = 'statusstrip hidden'; return; }
+  const items = [];
+  const zb = S.room.zoneBribe || {};
+  for (const zid of Object.keys(zb)) {
+    const z = S.zones.find(x => x.id === zid);
+    const name = z ? zn(z) : zid;
+    if (zb[zid].owner === PID) items.push(t('stMayor', name, zb[zid].rounds, zb[zid].shield));
+    else items.push(t('stRivalMayor', name, zb[zid].rounds));
+  }
+  if (me.insider > 0) items.push(t('stInsider', me.insider));
+  for (const z of S.zones) for (const as of z.assets) {
+    if (as.owner !== PID) continue;
+    if (as.damaged > 0) items.push(t('stDamaged', an(as), as.damaged));
+    if (as.frozen > 0) items.push(t('stFrozen', an(as), as.frozen));
+  }
+  if (me.protectionLock > 0) items.push(t('stLock', me.protectionLock));
+  if (me.caseOpen > 0) items.push(t('stCase', me.caseOpen));
+  if (me.jailed > 0) items.push(t('stJail', me.jailed));
+  if (me.skipTurns > 0) items.push(t('stSkip', me.skipTurns));
+  el.innerHTML = items.map(x => `<span class="stchip">${x}</span>`).join('');
+  el.className = 'statusstrip' + (items.length ? '' : ' hidden');
+}
+
 function render() {
   if (!S) return;
   const me = S.me;
@@ -614,6 +670,12 @@ function render() {
     $('hInf').textContent = me.influence;
     $('hHeat').textContent = me.heat;
     $('hNet').textContent = money(me.netWorth);
+    const hnCell = $('hNet').parentElement;
+    if (hnCell) {
+      const hnl = hnCell.querySelector('.hl');
+      if (hnl) hnl.textContent = t('hNetL');
+      hnCell.title = t('hNetTip');
+    }
     $('hAp').textContent = '◆'.repeat(me.ap) + '◇'.repeat(Math.max(0, S.cfg.apPerRound - me.ap));
     const al = $('alertBar');
     if (me.jailed > 0) { al.className = 'alert'; al.textContent = t('jailed', me.jailed); }
@@ -621,6 +683,7 @@ function render() {
     else if (me.heat >= 70) { al.className = 'alert'; al.textContent = t('heatAlert', me.heat); }
     else al.className = 'alert hidden';
   }
+  renderStatusStrip();
   $('hRound').textContent = S.room.round;
 
   // ticker (курс всегда к USD)
@@ -1220,6 +1283,22 @@ function renderMap() {
 window.startAuctionFromSheet = assetId => {
   act('start_auction', { assetId });
 };
+window.openOwnAuctionSheet = assetId => {
+  const a = S.zones.flatMap(z => z.assets).find(x => x.id === assetId);
+  if (!a) return;
+  openSheet(`<div class="sh-title">${t('ownAuctionTitle')}</div>
+    <div class="sh-sub">${a.icon} ${an(a)} · ${t('value', money(a.value))}</div>
+    <div class="mini" style="margin-bottom:8px">${t('ownAuctionSub')}</div>
+    <div class="mini">${t('ownAuctionStart')}</div>
+    <input id="au-start" type="number" value="${Math.round(a.value * 0.5)}" step="1000" class="btn big" style="width:100%;margin-bottom:10px">
+    <div class="rowbtns"><button class="btn primary" onclick="startOwnAuction('${a.id}')">${t('ownAuctionGo')}</button>
+    <button class="btn" onclick="closeSheet()">${t('cancel')}</button></div>`);
+};
+window.startOwnAuction = assetId => {
+  const startPrice = Math.round(+document.getElementById('au-start').value || 0);
+  closeSheet();
+  act('start_auction', { assetId, startPrice });
+};
 window.showAsset = (zid, aid) => {
   const z = S.zones.find(x => x.id === zid);
   const a = z.assets.find(x => x.id === aid);
@@ -1239,32 +1318,44 @@ window.showAsset = (zid, aid) => {
       <button class="btn" onclick="closeSheet()">${t('later')}</button></div>
       ${auctionBtn ? `<div class="rowbtns">${auctionBtn}</div>` : ''}`;
   } else if (!mine) {
-    const buyoutPrice = Math.round(a.value * 1.6);
     const myMayor = S.room.zoneBribe[z.id]?.owner === PID;
-    // Захват (seize) требует все условия сразу: актив повреждён рейдом, свой мёр,
-    // достаточно влияния (Ⅵ6) и нала ($130K) и очков действия (2 AP). Раньше
-    // кнопка показывалась только при damaged+myMayor, и игрок часто видел отказ «не хватает влияния/нала/AP»
-    // без объяснения — теперь при недостатке ресурса показывается точная чёрная кнопка всё равно,
-    // но с подсказкой, чего ичез — а сервер всё равно перепроверит все условия при act('seize').
+    const owner = S.players.find(p => p.id === a.owner);
+    // Условия захвата: зелёное = выполнено, красное = не хватает. Сервер перепроверяет всё при act('seize').
     const seizeAct = S.actions?.seize || { ap: 2, inf: 6, black: 130000 };
-    const missing = [];
-    if ((me.ap || 0) < (seizeAct.ap ?? 2)) missing.push(t('needAp', seizeAct.ap ?? 2));
-    if (me.influence < (seizeAct.inf || 0)) missing.push(t('needInfluence', seizeAct.inf));
-    if (me.black < (seizeAct.black || 0)) missing.push(t('needCash', money(seizeAct.black)));
+    const conds = [
+      [!a.mortgage, t('condFree')],
+      [a.damaged > 0, t('condDamaged')],
+      [!!me.protection, t('condMyRoof')],
+      [!(owner && owner.protection), t('condTheirRoof')],
+      [myMayor, t('condMyMayor')],
+      [me.influence >= (seizeAct.inf || 0), t('condInf', seizeAct.inf)],
+      [me.black >= (seizeAct.black || 0), t('condCash', money(seizeAct.black))],
+      [(me.ap || 0) >= (seizeAct.ap ?? 2), t('condAp', seizeAct.ap ?? 2)],
+    ];
+    const allOk = conds.every(c => c[0]);
+    const condHtml = conds.map(c => `<div class="cond ${c[0] ? 'ok' : 'no'}"><i>${c[0] ? '✓' : '✕'}</i>${c[1]}</div>`).join('');
     // Аренда платится автоматически в момент попадания на клетку — кнопка
     // «заплатить аренду» тут не нужна (и вводила в заблуждение).
     btns = `
+      <div class="rowbtns"><button class="btn primary" onclick="openTradeSheet('${a.owner}','${a.id}')">${t('buyoutBtn')}</button></div>
       <div class="rowbtns"><button class="btn danger" onclick="act('audit_rival',{assetId:'${a.id}'})">${t('auditBtn')}</button>
       <button class="btn danger" onclick="act('raid',{assetId:'${a.id}'})">${t('raidBtn')}</button></div>
-      <div class="rowbtns"><button class="btn primary" onclick="act('buyout',{assetId:'${a.id}'})">${t('buyoutBtn', money(buyoutPrice))}</button></div>
-      ${a.damaged && myMayor ? `<div class="rowbtns"><button class="btn danger" ${missing.length ? 'disabled' : ''} onclick="act('seize',{assetId:'${a.id}'})">${t('seizeBtn')}</button></div>` : ''}
-      ${a.damaged && myMayor && missing.length ? `<div class="mini" style="margin:6px 2px;color:#ff9aa5">${t('seizeMissing', missing.join(', '))}</div>` : ''}
-      ${a.damaged && !myMayor ? `<div class="mini" style="margin:6px 2px;color:#ff9aa5">${t('seizeNeedMayor')}</div>` : ''}
+      <div class="sec-title">${t('condTitle')}</div>${condHtml}
+      <div class="rowbtns"><button class="btn danger" ${allOk ? '' : 'disabled'} onclick="act('seize',{assetId:'${a.id}'})">${t('seizeBtn')}</button></div>
+      <div class="rowbtns"><button class="btn" onclick="closeSheet()">${t('close')}</button></div>`;
+  } else if (a.mortgage) {
+    btns = `<div class="mini" style="margin:6px 2px;color:#ffc46b">${t('mortgagedTag')}: ${t('mortgageInfo', money(a.mortgage.loan), money(a.mortgage.cost))}</div>
+      <div class="rowbtns"><button class="btn primary" onclick="act('redeem',{assetId:'${a.id}'})">${t('redeemBtn', money(a.mortgage.cost))}</button></div>
       <div class="rowbtns"><button class="btn" onclick="closeSheet()">${t('close')}</button></div>`;
   } else {
     const rate = 0.45 + Math.max(0, Math.min(100, S.me?.rep || 50)) / 100 * 0.45;
     const bankPrice = Math.round(a.value * rate);
-    btns = `<div class="rowbtns"><button class="btn" onclick="act('sell_bank',{assetId:'${a.id}'})">${t('sellBank', money(bankPrice))}</button></div>
+    const loanNow = Math.round(a.value * 0.85);
+    const auctionOwn = !S.room.auction
+      ? `<div class="rowbtns"><button class="btn" onclick="openOwnAuctionSheet('${a.id}')">${t('ownAuctionBtn')}</button></div>` : '';
+    btns = `<div class="rowbtns"><button class="btn primary" onclick="act('mortgage',{assetId:'${a.id}'})">${t('mortgageBtn', money(loanNow))}</button></div>
+      ${auctionOwn}
+      <div class="rowbtns"><button class="btn" onclick="act('sell_bank',{assetId:'${a.id}'})">${t('sellBank', money(bankPrice))}</button></div>
       <div class="rowbtns"><button class="btn" onclick="act('offer_asset',{assetId:'${a.id}',price:${Math.round(a.value * 1.1)}})">${t('offerPlayers')} ${money(Math.round(a.value * 1.1))}</button></div>
       <div class="rowbtns"><button class="btn" onclick="closeSheet()">${t('close')}</button></div>`;
   }
@@ -1357,7 +1448,7 @@ function renderCrime() {
     <div class="scheme" onclick="act('lobby')">
       <div class="sico">🎩</div><div class="sinfo"><div class="stitle">${t('lobbyTitle')}</div>
       <div class="sdesc">${t('lobbyDesc')}</div></div>
-      <div class="scost">$42K</div></div>
+      <div class="scost">◆1 · $42K</div></div>
     <div class="scheme" onclick="act('offshore')">
       <div class="sico">🏝️</div><div class="sinfo"><div class="stitle">${t('offshoreTitle', me.offshore ? '✅' : '')}</div>
       <div class="sdesc">${t('offshoreDesc')}</div></div>
@@ -1366,7 +1457,7 @@ function renderCrime() {
     <div class="sec-title">${t('secDefense')}</div>
     <div class="scheme" onclick="act('protection')">
       <div class="sico">🦺</div><div class="sinfo"><div class="stitle">${t('protTitle', me.protection ? '✅' : '')}</div>
-      <div class="sdesc">${t('protDesc')}</div></div>
+      <div class="sdesc">${t('protDesc')}${me.protectionLock > 0 ? ' · ' + t('stLock', me.protectionLock) : ''}</div></div>
       <div class="scost">$40K<br>−$12K/r</div></div>
     <div class="scheme" onclick="act('buy_inspector')">
       <div class="sico">📋</div><div class="sinfo"><div class="stitle">${t('inspTitle', me.insider > 0 ? '✅ ' + me.insider : '')}</div>
@@ -1378,9 +1469,9 @@ function renderCrime() {
     <div class="mini" style="margin:14px 2px">${t('attackHint')} ${rivals.length ? '' : t('noRivals')}</div>`;
 }
 
-window.openTradeSheet = () => {
+window.openTradeSheet = (presetTarget, presetWant) => {
   const allProps = S.zones.flatMap(z => z.assets);
-  const myAssets = allProps.filter(a => a.owner === PID);
+  const myAssets = allProps.filter(a => a.owner === PID && !a.mortgage);
   const rivals = S.players.filter(p => p.id !== PID && !p.eliminated);
   if (!rivals.length) return toast(t('noRivals'), 'bad');
   openSheet(`<div class="sh-title">${t('tradeSheetTitle')}</div>
@@ -1401,12 +1492,19 @@ window.openTradeSheet = () => {
     <button class="btn" onclick="closeSheet()">${t('cancel')}</button></div>`);
   const updateWantOptions = () => {
     const targetId = document.getElementById('tr-target').value;
-    const theirAssets = allProps.filter(a => a.owner === targetId);
+    const theirAssets = allProps.filter(a => a.owner === targetId && !a.mortgage);
     document.getElementById('tr-want').innerHTML = `<option value="">${t('none')}</option>` +
       theirAssets.map(a => `<option value="${a.id}">${a.icon} ${an(a)} (${money(a.value)})</option>`).join('');
   };
   document.getElementById('tr-target').onchange = updateWantOptions;
+  if (typeof presetTarget === 'string') document.getElementById('tr-target').value = presetTarget;
   updateWantOptions();
+  // «Торговля» с карточки чужого объекта: сразу выбираем игрока и нужный объект, предлагаем его цену
+  if (typeof presetWant === 'string') {
+    document.getElementById('tr-want').value = presetWant;
+    const pa = allProps.find(x => x.id === presetWant);
+    if (pa) document.getElementById('tr-cash').value = Math.round(pa.value);
+  }
 };
 window.sendTradeOffer = () => {
   const targetId = document.getElementById('tr-target').value;
@@ -1420,12 +1518,28 @@ window.openSeizeBoardSheet = () => {
   const allProps = S.zones.flatMap(z => z.assets);
   const targets = allProps.filter(a => a.owner && a.owner !== PID);
   if (!targets.length) return toast(t('noRivals'), 'bad');
+  const me = S.me;
+  const sb = S.actions?.seize_board || { ap: 2, inf: 8, black: 160000 };
+  // Для каждого объекта показываем, чего не хватает (красным) или что всё готово (зелёным)
+  const missingFor = a => {
+    const owner = S.players.find(p => p.id === a.owner);
+    const miss = [];
+    if (a.mortgage) miss.push(t('condFree'));
+    if (!me.protection) miss.push(t('condMyRoof'));
+    if (owner && owner.protection) miss.push(t('condTheirRoof'));
+    if (S.room.zoneBribe[a.zone]?.owner !== PID) miss.push(t('condMyMayor'));
+    if (me.influence < (sb.inf || 0)) miss.push(t('condInf', sb.inf));
+    if (me.black < (sb.black || 0)) miss.push(t('condCash', money(sb.black)));
+    if ((me.ap || 0) < (sb.ap ?? 2)) miss.push(t('condAp', sb.ap ?? 2));
+    return miss;
+  };
   openSheet(`<div class="sh-title">${t('seizeSheetTitle')}</div>
     <div class="sh-sub">${t('seizeSheetSub')}</div>
-    <div class="picklist">${targets.map(a => `<div class="scheme" onclick="act('seize_board',{assetId:'${a.id}'});closeSheet()">
+    <div class="picklist">${targets.map(a => { const miss = missingFor(a); return `<div class="scheme" onclick="act('seize_board',{assetId:'${a.id}'});closeSheet()">
       <div class="sico">${a.icon}</div><div class="sinfo"><div class="stitle">${an(a)}</div>
-      <div class="sdesc">${a.ownerName || ''}</div></div>
-      <div class="scost">${money(a.value)}</div></div>`).join('')}</div>
+      <div class="sdesc">${a.ownerName || ''}</div>
+      ${miss.length ? `<div class="cond no"><i>✕</i>${miss.join(' · ')}</div>` : `<div class="cond ok"><i>✓</i>OK</div>`}</div>
+      <div class="scost">${money(a.value)}</div></div>`; }).join('')}</div>
     <div class="rowbtns"><button class="btn" onclick="closeSheet()">${t('cancel')}</button></div>`);
 };
 

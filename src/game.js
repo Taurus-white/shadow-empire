@@ -17,7 +17,13 @@ const CFG = {
   startBlack: 30000,
   startInfluence: 5,
   apPerRound: 3,
-  blackWorth: 0.6,       // нал считается в итоге с дисконтом
+  blackWorth: 1,         // нал считается в капитале 1:1 с безналом
+  rollAp: 1,             // бросок кубиков стоит 1 AP (остаётся 2 на схемы)
+  skimRate: 0.85,        // конверсия безнал → нал («мимо кассы»)
+  mortgageRate: 0.85,    // банк выдаёт под залог 85% текущей стоимости актива
+  mortgageFee: 0.25,     // погашение = сумма залога + 25%
+  protectionLockRounds: 3, // после доноса крышу нельзя нанять 3 круга
+  snitchFine: 40000,     // нал браткам за донос, если нет криминального актива
   launderFee: 0.25,
   heatDecay: 4,
   caseThreshold: 3,      // улик до открытия дела
@@ -81,6 +87,7 @@ function income(asset, room, ownerId) {
     if (zb.owner === ownerId) { m *= 1.3; factors.push({ key: 'f_mayor_own', params: {}, v: 0.3 }); }
     else { m *= 0.82; factors.push({ key: 'f_mayor_rival', params: {}, v: -0.18 }); }
   }
+  if (st.mortgage) { m = 0; factors.push({ key: 'f_mortgaged', params: {}, v: -1 }); }
   if (st.frozen > 0) { m = 0; factors.push({ key: 'f_frozen', params: { n: st.frozen }, v: -1 }); }
   if (st.damaged > 0) { m *= 0.5; factors.push({ key: 'f_damaged', params: { n: st.damaged }, v: -0.5 }); }
   if (p?.protection) { factors.push({ key: 'f_protection', params: {}, v: 0 }); }
@@ -159,7 +166,7 @@ function newPlayer(id, name, isBot = false) {
     id, name, isBot,
     white: CFG.startWhite, black: CFG.startBlack, influence: CFG.startInfluence,
     heat: 0, evidence: 0, rep: 50, ap: CFG.apPerRound,
-    protection: false, insider: 0, offshore: false,
+    protection: false, protectionLock: 0, insider: 0, offshore: false,
     caseOpen: 0, jailed: 0, ready: false,
     debt: 0, // недоплаченная аренда — списывается из будущего дохода первым делом
     pos: 0, inJail: false, skipTurns: 0, chains: [], rolledThisTurn: false,
@@ -227,7 +234,10 @@ function addPlayer(room, id, name, isBot = false, pfp = null) {
 
 function netWorth(room, p) {
   let v = p.white + p.black * CFG.blackWorth - (p.debt || 0);
-  for (const a of ASSETS) if (room.assets[a.id]?.owner === p.id) v += assetValue(a, room);
+  for (const a of ASSETS) {
+    const st = room.assets[a.id];
+    if (st?.owner === p.id) v += assetValue(a, room) - (st.mortgage ? st.mortgage.loan : 0);
+  }
   return Math.round(v);
 }
 
@@ -267,7 +277,13 @@ function surrenderPlayer(room, pid, reason = 'surrender') {
   const p = room.players[pid];
   if (!p || p.eliminated) return;
   for (const a of ASSETS) {
-    if (room.assets[a.id]?.owner === pid) delete room.assets[a.id].owner;
+    if (room.assets[a.id]?.owner === pid) { delete room.assets[a.id].owner; delete room.assets[a.id].mortgage; }
+  }
+  if (room.auction && !room.auction.closed && room.auction.sellerId === pid) {
+    const au = room.auction;
+    const bidder = au.currentBidder && room.players[au.currentBidder];
+    if (bidder && au.reservedBid > 0) bidder.white += au.reservedBid;   // возвращаем зарезервированную ставку
+    room.auction = null;
   }
   for (const z of Object.keys(room.zoneBribe)) {
     if (room.zoneBribe[z].owner === pid) delete room.zoneBribe[z];
@@ -325,11 +341,11 @@ const ACTIONS = {
   lobby: { ap: 1, label: 'Лоббировать (купить влияние)', white: 42000 },
   skim: { ap: 1, label: 'Провести доход мимо кассы' },
   kickback: { ap: 1, label: 'Откат с госконтракта' },
-  buyout: { ap: 1, label: 'Предложить выкуп' },
+  buyout: { ap: 0, label: 'Выкуп (заменён на «Торговлю»)' },
   seize: { ap: 2, label: 'Рейдерский захват', inf: 6, black: 130000, heat: 30 },
   pay_rent: { ap: 0, label: 'Оплатить аренду' },
   surrender: { ap: 0, label: 'Сдаться' },
-  roll: { ap: 0, label: 'Бросить кубик' },
+  roll: { ap: 1, label: 'Бросить кубик' },
   end_turn: { ap: 0, label: 'Завершить ход' },
   pay_bail: { ap: 0, label: 'Заплатить залог' },
   sell_bank: { ap: 0, label: 'Продать банку' },
@@ -342,6 +358,8 @@ const ACTIONS = {
   auction_pass: { ap: 0, label: 'Пас на аукционе' },
   seize_board: { ap: 2, label: 'Силовой захват клетки', inf: 8, black: 160000, heat: 32 },
   start_auction: { ap: 1, label: 'Начать аукцион' },
+  mortgage: { ap: 0, label: 'Залог банку' },
+  redeem: { ap: 0, label: 'Выкупить из залога' },
 };
 
 function fail(msg) { return { ok: false, msg }; }
@@ -350,11 +368,18 @@ function doAction(room, pid, act, arg = {}) {
   const p = room.players[pid];
   if (!p) return fail('Игрок не найден');
   if (room.finished) return fail('Игра окончена');
-  const FREE_IN_JAIL = ['end_turn', 'pay_bail', 'sell_bank', 'offer_asset', 'accept_offer', 'roll'];
+  const FREE_IN_JAIL = ['end_turn', 'pay_bail', 'sell_bank', 'offer_asset', 'accept_offer', 'roll', 'mortgage', 'redeem'];
   if (p.jailed > 0 && !FREE_IN_JAIL.includes(act)) return fail(`Ты под стражей ещё ${p.jailed} р.`);
   const def = ACTIONS[act];
   if (!def) return fail('Неизвестное действие');
-  const apCost = def.ap ?? 1;
+  // Бросок стоит 1 AP. Если все очки потрачены до броска — бросок в этом ходу пропускается.
+  if (act === 'roll' && currentPlayerId(room) === pid && !p.rolledThisTurn && !(p.jailed > 0)
+      && !(p.skipTurns > 0) && p.ap < CFG.rollAp) {
+    p.rolledThisTurn = true;
+    log(room, 'world', { key: 'log_skip_noap', actorId: pid });
+    return { ok: true, skipped: true, noAp: true };
+  }
+  const apCost = act === 'roll' ? 0 : (def.ap ?? 1);   // AP на бросок списывается внутри 'roll'
   if (p.ap < apCost) return fail('Нет действий в этом раунде');
   if (def.black && p.black < def.black) return fail('Не хватает нала');
   if (def.white && p.white < def.white) return fail('Не хватает белых');
@@ -394,7 +419,7 @@ function doAction(room, pid, act, arg = {}) {
     case 'bribe_mayor': {
       if (!arg.zone || !world.ZONES[arg.zone]) return fail('Нужна зона');
       pay();
-      room.zoneBribe[arg.zone] = { owner: pid, rounds: 5 };
+      room.zoneBribe[arg.zone] = { owner: pid, rounds: 5, shield: true };
       p.rep -= 3;
       // кто именно купил мэра — не пишем в открытую хронику (это анонимная коррупция)
       log(room, 'corrupt', { key: 'log_mayor_bribed', params: { zoneId: arg.zone } });
@@ -441,7 +466,9 @@ function doAction(room, pid, act, arg = {}) {
       p.rep -= 8; p.evidence += 1;
       return { ok: true };
     }
-    case 'protection': { pay(); p.protection = true; log(room, 'corrupt', { key: 'log_protection', actorId: pid }); return { ok: true }; }
+    case 'protection': {
+      if (p.protectionLock > 0) return fail(`Крышу нельзя нанять ещё ${p.protectionLock} круг(а) — после доноса`);
+      pay(); p.protection = true; log(room, 'corrupt', { key: 'log_protection', actorId: pid }); return { ok: true }; }
     case 'launder': {
       const amt = Math.min(p.black, Math.max(0, Math.round(arg.amount || p.black)));
       if (amt < 10000) return fail('Мало нала');
@@ -465,10 +492,28 @@ function doAction(room, pid, act, arg = {}) {
     case 'snitch': {
       const target = room.players[arg.targetId];
       if (!target || target.id === pid) return fail('Нужен другой игрок');
+      // Цена доноса: потеря крыши (+запрет нанять её 3 круга) и криминального бизнеса.
+      // Нет криминального актива — откуп от братков: 40 000 нала. Проверяем ДО применения выгоды.
+      const crimeOwned = ASSETS.filter(a => a.kind === 'crime' && room.assets[a.id]?.owner === pid)
+        .sort((x, y) => assetValue(x, room) - assetValue(y, room));
+      if (!crimeOwned.length && p.black < CFG.snitchFine) {
+        return fail(`Нет криминального бизнеса — нужно $${fmt(CFG.snitchFine)} нала, чтобы откупиться от братков`);
+      }
       p.ap -= 1;
       p.evidence = 0; p.caseOpen = 0; p.heat = Math.max(0, p.heat - 30); p.rep -= 15;
       target.evidence += 2; target.heat += 20;
       target.knows = target.knows || []; target.knows.push(p.name);
+      p.protection = false;
+      p.protectionLock = CFG.protectionLockRounds;
+      if (crimeOwned.length) {
+        const lost = crimeOwned[0];
+        delete room.assets[lost.id].owner;
+        delete room.assets[lost.id].mortgage;
+        log(room, 'attack', { key: 'log_snitch_lost', params: { icon: lost.icon, assetId: lost.id }, actorId: pid });
+      } else {
+        p.black -= CFG.snitchFine;
+        log(room, 'attack', { key: 'log_snitch_fine', params: { amt: CFG.snitchFine }, actorId: pid });
+      }
       log(room, 'attack', { key: 'log_snitch', actorId: pid, targetId: target.id });
       return { ok: true };
     }
@@ -479,25 +524,15 @@ function doAction(room, pid, act, arg = {}) {
       if (amt < 20000) return fail('Слишком мало белых, чтобы было что скрывать');
       p.ap -= 1;
       p.white -= amt;
-      p.black += Math.round(amt * 0.55);
+      p.black += Math.round(amt * CFG.skimRate);
       p.heat += 9;
       log(room, 'corrupt', { key: 'log_skim', params: { amt }, actorId: pid });
       return { ok: true };
     }
     case 'buyout': {
-      // легальный выкуп чужого актива с премией — всегда срабатывает
-      const a = ASSET_BY_ID[arg.assetId];
-      const st = a && room.assets[a.id];
-      if (!st?.owner || st.owner === pid) return fail('Нужен чужой актив');
-      const victim = room.players[st.owner];
-      const price = Math.round(assetValue(a, room) * 1.6); // премия за принуждение к продаже
-      if (p.white < price) return fail(`Нужно $${fmt(price)} белых (цена с премией 60%)`);
-      p.ap -= 1;
-      p.white -= price;
-      victim.white += price;
-      st.owner = pid;
-      log(room, 'buy', { key: 'log_buyout', params: { icon: a.icon, assetId: a.id, amt: price }, actorId: pid, targetId: victim.id });
-      return { ok: true };
+      // Принудительный выкуп убран: вместо него — «Торговля» (propose_trade / accept_trade),
+      // где владелец сам решает, принимать ли предложение.
+      return fail('Выкуп заменён на «Торговлю»: предложи владельцу деньги и/или свой объект');
     }
     case 'seize': {
       // рейдерский захват — нужны ВСЕ ТРИ условия: актив ослаблен рейдом, свой мэр
@@ -505,13 +540,15 @@ function doAction(room, pid, act, arg = {}) {
       const a = ASSET_BY_ID[arg.assetId];
       const st = a && room.assets[a.id];
       if (!st?.owner || st.owner === pid) return fail('Нужен чужой актив');
+      if (st.mortgage) return fail('Объект в залоге у банка — захватить нельзя');
       if (!(st.damaged > 0)) return fail('Актив нужно сначала ослабить рейдом');
+      if (!p.protection) return fail('Для захвата нужна своя крыша');
       if (st.protected || room.players[st.owner].protection) return fail('Актив под крышей — отжать нельзя');
       const mayor = room.zoneBribe[a.zone];
       if (!mayor || mayor.owner !== pid) return fail('Нужен свой мэр в этой зоне — иначе захват не оформить');
       const victim = room.players[st.owner];
       pay();
-      st.owner = pid; st.damaged = 0; st.frozen = 0;
+      st.owner = pid; st.damaged = 0; st.frozen = 0; delete st.mortgage;
       p.rep -= 12; p.evidence += 2;
       log(room, 'attack', { key: 'log_seize', params: { icon: a.icon, assetId: a.id }, actorId: pid, targetId: victim.id });
       return { ok: true };
@@ -539,6 +576,7 @@ function doAction(room, pid, act, arg = {}) {
       if (p.rolledThisTurn) return fail('Уже бросал в этом ходу');
       if (p.jailed > 0) return fail(`Ты в тюрьме: осталось ${p.jailed} ход(а). Заплати залог или жди`);
       if (p.skipTurns > 0) { p.skipTurns--; p.rolledThisTurn = true; log(room, 'world', { key: 'log_skip', actorId: pid }); return { ok: true, skipped: true }; }
+      p.ap -= CFG.rollAp;   // бросок = 1 AP
       const deps = { valueFn: assetValue, incomeFn: income, log, payRent };
       const from = p.pos;
       // важен порядок: сначала бросаем/двигаемся и логируем сам бросок,
@@ -590,6 +628,8 @@ function doAction(room, pid, act, arg = {}) {
       const a = ASSET_BY_ID[arg.assetId];
       const st = a && room.assets[a.id];
       if (!st || st.owner !== pid) return fail('Это не твой актив');
+      if (st.mortgage) return fail('Объект в залоге — сначала выкупи его из залога');
+      if (room.auction && !room.auction.closed && room.auction.assetId === a.id) return fail('Объект выставлен на аукцион');
       const rate = 0.45 + Math.max(0, Math.min(100, p.rep)) / 100 * 0.45;
       const price = Math.round(assetValue(a, room) * rate);
       delete st.owner;
@@ -601,6 +641,7 @@ function doAction(room, pid, act, arg = {}) {
       const a = ASSET_BY_ID[arg.assetId];
       const st = a && room.assets[a.id];
       if (!st || st.owner !== pid) return fail('Это не твой актив');
+      if (st.mortgage) return fail('Объект в залоге — сначала выкупи его из залога');
       const price = Math.max(1, Math.round(arg.price || assetValue(a, room)));
       room.offers = room.offers || [];
       room.offers = room.offers.filter(o => o.assetId !== a.id);
@@ -616,6 +657,7 @@ function doAction(room, pid, act, arg = {}) {
       const a = ASSET_BY_ID[o.assetId];
       const st = room.assets[a.id];
       if (!st || st.owner !== o.from) return fail('Актив уже сменил владельца');
+      if (st.mortgage) return fail('Объект в залоге у банка');
       if (p.white < o.price) return fail(`Нужно $${fmt(o.price)} белых`);
       const seller = room.players[o.from];
       p.white -= o.price; seller.white += o.price;
@@ -640,10 +682,12 @@ function doAction(room, pid, act, arg = {}) {
       if (giveAssetId) {
         const st = room.assets[giveAssetId];
         if (!st || st.owner !== pid) return fail('Это не твой актив');
+        if (st.mortgage) return fail('Твой объект в залоге — сначала выкупи его');
       }
       if (wantAssetId) {
         const st = room.assets[wantAssetId];
         if (!st || st.owner !== target.id) return fail('Актив не принадлежит этому игроку');
+        if (st.mortgage) return fail('Объект соперника в залоге у банка — торговать им нельзя');
       }
       if (!giveAssetId && !wantAssetId && cashDelta === 0) return fail('Сделка пустая — предложи актив или деньги');
       room.trades = room.trades || [];
@@ -670,6 +714,9 @@ function doAction(room, pid, act, arg = {}) {
         const st = room.assets[tr.wantAssetId];
         if (!st || st.owner !== pid) return fail('Твой актив уже сменил владельца');
       }
+      if ((tr.giveAssetId && room.assets[tr.giveAssetId].mortgage) || (tr.wantAssetId && room.assets[tr.wantAssetId].mortgage)) {
+        return fail('Один из объектов сделки в залоге у банка');
+      }
       // cashDelta > 0 — инициатор платит принимающему; < 0 — принимающий платит инициатору
       if (tr.cashDelta > 0) {
         if (from.white < tr.cashDelta) return fail('У инициатора не хватает белых на доплату');
@@ -695,17 +742,56 @@ function doAction(room, pid, act, arg = {}) {
       room.trades = room.trades.filter(x => x.id !== tr.id);
       return { ok: true };
     }
+    // ---------- ЗАЛОГ БАНКУ ----------
+    case 'mortgage': {
+      const a = ASSET_BY_ID[arg.assetId];
+      const st = a && room.assets[a.id];
+      if (!st || st.owner !== pid) return fail('Это не твой актив');
+      if (st.mortgage) return fail('Объект уже в залоге');
+      if (room.auction && !room.auction.closed && room.auction.assetId === a.id) return fail('Объект выставлен на аукцион');
+      const value = assetValue(a, room);
+      const loan = Math.round(value * CFG.mortgageRate);
+      const cost = Math.round(loan * (1 + CFG.mortgageFee));
+      st.mortgage = { loan, cost, value, round: room.round };
+      p.black += loan;   // банк выдаёт нал
+      room.offers = (room.offers || []).filter(o => o.assetId !== a.id);
+      room.trades = (room.trades || []).filter(tr => tr.giveAssetId !== a.id && tr.wantAssetId !== a.id);
+      log(room, 'law', { key: 'log_mortgage', params: { icon: a.icon, assetId: a.id, amt: loan, cost }, actorId: pid });
+      return { ok: true, loan, cost };
+    }
+    case 'redeem': {
+      const a = ASSET_BY_ID[arg.assetId];
+      const st = a && room.assets[a.id];
+      if (!st || st.owner !== pid) return fail('Это не твой актив');
+      if (!st.mortgage) return fail('Объект не в залоге');
+      const cost = st.mortgage.cost;
+      if (p.black + p.white < cost) return fail(`Для выкупа из залога нужно $${fmt(cost)} (нал + безнал 1:1)`);
+      const fromBlack = Math.min(p.black, cost);
+      p.black -= fromBlack;
+      p.white -= (cost - fromBlack);
+      delete st.mortgage;
+      log(room, 'law', { key: 'log_redeem', params: { icon: a.icon, assetId: a.id, amt: cost }, actorId: pid });
+      return { ok: true, cost };
+    }
     // ---------- АУКЦИОН ----------
     case 'start_auction': {
       const a = ASSET_BY_ID[arg.assetId];
       const st = a && (room.assets[a.id] || {});
       if (!a) return fail('Нет такого актива');
-      if (st.owner) return fail('Уже занято');
-      if (B.POS_BY_PROP[a.id] !== p.pos) return fail('Начать аукцион можно только на своей клетке');
       if (room.auction && !room.auction.closed) return fail('Аукцион уже идёт');
+      const own = st.owner === pid;
+      if (st.owner && !own) return fail('Уже занято');
+      if (!own && B.POS_BY_PROP[a.id] !== p.pos) return fail('Начать аукцион можно только на своей клетке');
+      if (own && st.mortgage) return fail('Объект в залоге — сначала выкупи его из залога');
+      const value = assetValue(a, room);
+      // свой объект: стартовая цена по желанию владельца (от 30% до 300% стоимости), иначе 50%
+      const minStart = Math.round(value * 0.3);
+      const startPrice = own
+        ? Math.max(minStart, Math.min(Math.round(value * 3), Math.round(arg.startPrice || value * 0.5)))
+        : minStart;
       p.ap -= 1;
       room.auction = {
-        assetId: a.id, startedBy: pid, currentBid: Math.round(assetValue(a, room) * 0.3),
+        assetId: a.id, startedBy: pid, sellerId: own ? pid : null, currentBid: startPrice,
         currentBidder: null,
         reservedBid: 0,
         escrowed: true,
@@ -720,6 +806,7 @@ function doAction(room, pid, act, arg = {}) {
     case 'auction_bid': {
       const au = room.auction;
       if (!au || au.closed) return fail('Аукцион не идёт');
+      if (au.sellerId === pid) return fail('Нельзя делать ставки на свой объект');
       const bid = Math.round(arg.amount || 0);
       if (bid <= au.currentBid) return fail(`Ставка должна быть выше $${fmt(au.currentBid)}`);
       const ownReserved = au.currentBidder === pid ? (au.reservedBid || 0) : 0;
@@ -750,12 +837,14 @@ function doAction(room, pid, act, arg = {}) {
       const a = ASSET_BY_ID[arg.assetId];
       const st = a && room.assets[a.id];
       if (!st?.owner || st.owner === pid) return fail('Нужен чужой актив');
+      if (st.mortgage) return fail('Объект в залоге у банка — захватить нельзя');
+      if (!p.protection) return fail('Для захвата нужна своя крыша');
       if (st.protected || room.players[st.owner].protection) return fail('Актив под крышей — захват невозможен');
       const mayor = room.zoneBribe[a.zone];
       if (!mayor || mayor.owner !== pid) return fail('Нужен свой мэр в этой зоне — иначе захват не оформить');
       const victim = room.players[st.owner];
       pay();
-      st.owner = pid; st.damaged = 0; st.frozen = 0;
+      st.owner = pid; st.damaged = 0; st.frozen = 0; delete st.mortgage;
       p.rep -= 16; p.evidence += 3;
       log(room, 'attack', { key: 'log_seize_board', params: { icon: a.icon, assetId: a.id }, actorId: pid, targetId: victim.id });
       return { ok: true };
@@ -780,6 +869,7 @@ function endRound(room) {
 
   for (const id of room.order) {
     const p = room.players[id];
+    if (p.protectionLock > 0) p.protectionLock--;   // запрет нанимать крышу после доноса — 3 круга
     if (p.jailed > 0 || p.inJail) { p.ap = CFG.apPerRound; p.lastIncome = 0; continue; } // в тюрьме дохода нет
 
     let w = 0, b = 0;
@@ -836,8 +926,16 @@ function endRound(room) {
         const owned = ASSETS.filter(a => room.assets[a.id]?.owner === id);
         if (owned.length && !p.offshore) {
           const victim = owned.sort((x, y) => assetValue(y, room) - assetValue(x, room))[0];
-          delete room.assets[victim.id].owner;
-          log(room, 'law', { key: 'log_confiscate', params: { icon: victim.icon, assetId: victim.id }, actorId: id });
+          const zb = room.zoneBribe[victim.zone];
+          if (zb && zb.owner === id && zb.shield) {
+            // свой мэр раз за срок полномочий отменяет конфискацию одного объекта в своей зоне
+            zb.shield = false;
+            log(room, 'law', { key: 'log_mayor_shield', params: { icon: victim.icon, assetId: victim.id, zoneId: victim.zone }, actorId: id });
+          } else {
+            delete room.assets[victim.id].owner;
+            delete room.assets[victim.id].mortgage;
+            log(room, 'law', { key: 'log_confiscate', params: { icon: victim.icon, assetId: victim.id }, actorId: id });
+          }
         } else if (p.offshore) {
           p.offshore = false;
           log(room, 'law', { key: 'log_offshore_saved', actorId: id });
@@ -937,7 +1035,7 @@ function botReact(room, p) {
   if (!p || p.eliminated) return;
   // аукцион: бот с шансом перебивает, если актив ему выгоден и монет хватает
   const au = room.auction;
-  if (au && !au.closed && au.currentBidder !== p.id && !(au.passed || []).includes(p.id)) {
+  if (au && !au.closed && au.sellerId !== p.id && au.currentBidder !== p.id && !(au.passed || []).includes(p.id)) {
     const a = ASSET_BY_ID[au.assetId];
     if (a) {
       const fairValue = assetValue(a, room);
@@ -1041,7 +1139,7 @@ function view(room, pid) {
       const tier = Math.max(1, Math.min(5, Math.ceil((nw / CFG.winGoal) * 5)));
       return {
         id, name: p.name, isBot: p.isBot, pfp: p.pfp, heat: p.heat, rep: p.rep,
-        evidence: p.evidence, caseOpen: p.caseOpen, jailed: p.jailed,
+        evidence: p.evidence, caseOpen: p.caseOpen, jailed: p.jailed, protection: !!p.protection,
         netWorth: nw,   // капитал в деньгах виден всем — чтобы отстающие видели разрыв и вовремя сдавались
         tier,                          // остальным — только качественный ранг
         lastIncome: isMe ? p.lastIncome : null,
@@ -1061,7 +1159,7 @@ function view(room, pid) {
         return {
           ...a, owner: st.owner || null,
           ownerName: st.owner ? room.players[st.owner]?.name : null,
-          frozen: st.frozen || 0, damaged: st.damaged || 0,
+          frozen: st.frozen || 0, damaged: st.damaged || 0, mortgage: st.mortgage || null,
           value: assetValue(a, room), income: inc.gross, factors: inc.factors,
           rentDue: st.owner && st.owner !== pid ? Math.max(0, Math.round(inc.gross * 0.5 * TURN.chainRentMult(room, st.owner, a.id))) : 0,
           pos: B.POS_BY_PROP[a.id],

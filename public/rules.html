@@ -56,8 +56,12 @@
   выполняешь то, что на клетке. <b>10 секунд</b> на бросок, <b>20 секунд</b> на решение по событию.
   Пока ходят другие — можно вести теневые дела (взятки, рейды, отмывание, залог банку, сделки).</p>
   <p><b>Победа:</b> партия идёт <b>30 минут</b>. Когда время истекает, победитель — у кого больше
-  итоговый <b>капитал</b> (недвижимость по рыночной цене + деньги, нал считается с дисконтом).
+  итоговый <b>капитал</b> (недвижимость по рыночной цене + белые + нал 1:1 − долги и залоги).
   Старт: $80K белых + $30K нала + 6 влияния. Клетки: $25–70K.</p>
+  <h2>Очки действий (AP)</h2>
+  <p>В начале своего хода у тебя <b>3 очка действий (◆)</b>. <b>Бросок кубиков стоит 1 ◆</b>, поэтому на схемы
+  остаётся 2. Если потратить все 3 ◆ до броска — бросок в этот ход пропускается. Покупка влияния
+  (+2 влияния за $42K белых) стоит 1 ◆. Рейд и захват — 2 ◆, покупка клетки — 1 ◆.</p>
 
   <h2>Клетки доски</h2>
   <table>
@@ -95,7 +99,7 @@
     <li>Если совсем нечем платить залог — банкротство.</li>
   </ul>
   <h2>Активы</h2>
-  <p>25 активов в 6 зонах, три типа:</p>
+  <p>26 активов в 6 зонах, три типа:</p>
   <table>
     <tr><th>Тип</th><th>Покупка</th><th>Особенность</th></tr>
     <tr><td>🟢 Легал</td><td>белыми</td><td>стабильно, но налоги и проверки</td></tr>
@@ -108,7 +112,7 @@
 
   <h2>Коррупция</h2>
   <div class="grid2">
-    <div class="cell"><b>Взятка мэру</b>твои налоги в зоне −30%, у всех остальных издержки +18%. Действует 5 раундов</div>
+    <div class="cell"><b>Взятка мэру</b>твои объекты в зоне приносят +30% дохода, у остальных −18%. Действует 5 раундов. Один раз за срок отменяет конфискацию одного твоего объекта в этой зоне</div>
     <div class="cell"><b>Госконтракт</b>гарантированный доход $26–40K/раунд, требует влияния</div>
     <div class="cell"><b>Купить инспектора</b>−25% к шансу собрать улику на тебя, 3 раунда</div>
     <div class="cell"><b>Лоббизм</b>белые → влияние</div>
@@ -121,8 +125,20 @@
     <div class="cell"><b>Заказать проверку</b>замораживает чужой актив на 2 раунда. 40% шанс, что жертва узнает заказчика</div>
     <div class="cell"><b>Рейд / поджог</b>−30% стоимости чужого актива, если не отбит крышей</div>
     <div class="cell"><b>Крыша</b>защищает твои активы от рейдов и гасит убытки от беспорядков на 65%</div>
-    <div class="cell"><b>Рейдерский захват</b>нужны ВСЕ условия сразу: актив повреждён рейдом, у тебя куплен мэр этой зоны, и достаточно влияния (6) + нала ($130K) + 2 очка действий</div>
+    <div class="cell"><b>Рейдерский захват</b>нужны ВСЕ условия сразу: актив повреждён рейдом, у тебя есть своя крыша и куплен мэр этой зоны, у владельца крыши нет, объект не в залоге, и достаточно влияния (6) + нала ($130K) + 2 очка действий. Условия в игре подсвечены зелёным (есть) и красным (нет)</div>
   </div>
+
+  <h2>Залог, аукцион и торговля</h2>
+  <ul>
+    <li><b>Залог банку</b> — банк выдаёт <b>85% текущей стоимости</b> объекта налом. Объект остаётся твоим, но пока он в залоге:
+      дохода нет, его нельзя продать, обменять, выставить на аукцион или захватить. Выкуп из залога стоит
+      <b>сумма залога + 25%</b> (нал и безнал считаются 1:1).</li>
+    <li><b>Аукцион</b> — можно выставить свой объект (не в залоге): другие игроки делают ставки белыми, победитель платит
+      тебе, объект переходит к нему. Без ставок объект остаётся у тебя.</li>
+    <li><b>Торговля</b> — вместо принудительного выкупа: предложи владельцу деньги и/или свой объект. Сделка проходит только
+      если владелец её принял.</li>
+    <li><b>Мимо кассы</b> — конверсия белых в нал по курсу 85%.</li>
+  </ul>
 
   <h2>Следствие</h2>
   <p>Каждое грязное действие может оставить улику. При <b>3 уликах</b> открывается дело — 3 раунда,
@@ -130,7 +146,8 @@
   <ul>
     <li><b>Занести прокурору</b> — платишь налом, улики и палево падают.</li>
     <li><b>Сдать партнёра</b> — твои улики обнуляются и палево −30, но репутация −15,
-      а сданный узнаёт, кто его сдал.</li>
+      а сданный получает +2 улики и +20 палева и узнаёт, кто его сдал. Цена доноса: ты теряешь крышу
+      (нанять новую нельзя 3 круга) и один криминальный бизнес; если такого нет — откупаешься от братков $40K налом.</li>
     <li>Ничего не сделал — конфискация самого дорогого актива (если нет офшора), штраф и
       арест на 1 раунд.</li>
   </ul>
@@ -169,7 +186,7 @@
   resolve whatever is on the cell. <b>10 seconds</b> to roll, <b>20 seconds</b> to decide on an event.
   While others are playing, you can run shadow business (bribes, raids, laundering, bail, deals).</p>
   <p><b>Victory:</b> a match lasts <b>30 minutes</b>. When time runs out, the winner is whoever has the
-  highest total <b>net worth</b> (property at market price + cash, black money counted at a discount).
+  highest total <b>net worth</b> (property at market price + white + cash 1:1 − debts and mortgages).
   Start: $80K white + $30K cash + 6 influence. Cells: $25–70K.</p>
 
   <h2>Board cells</h2>
@@ -186,6 +203,11 @@
     <tr><td>🌪️ Disaster</td><td>skip a turn</td></tr>
     <tr><td>🅿️ Parking</td><td>nothing happens</td></tr>
   </table>
+  <h2>Action points (AP)</h2>
+  <p>At the start of your turn you get <b>3 action points (◆)</b>. <b>Rolling the dice costs 1 ◆</b>, leaving 2 for schemes.
+  If you spend all 3 ◆ before rolling, the roll is skipped that turn. Buying influence (+2 influence for $42K white) costs 1 ◆.
+  Raids and seizures cost 2 ◆, buying a cell costs 1 ◆.</p>
+
 
   <h2>Rent</h2>
   <p>Paid by whoever lands on your cell. Amount = the asset's live income (real prices, weather,
@@ -209,7 +231,7 @@
     <li>If you truly can't pay bail — bankruptcy.</li>
   </ul>
   <h2>Assets</h2>
-  <p>25 assets across 6 zones, three types:</p>
+  <p>26 assets across 6 zones, three types:</p>
   <table>
     <tr><th>Type</th><th>Buy with</th><th>Trait</th></tr>
     <tr><td>🟢 Legal</td><td>white money</td><td>stable, but taxes and audits</td></tr>
@@ -222,7 +244,7 @@
 
   <h2>Corruption</h2>
   <div class="grid2">
-    <div class="cell"><b>Bribe the mayor</b>your taxes in the zone −30%, everyone else's costs +18%. Lasts 5 rounds</div>
+    <div class="cell"><b>Bribe the mayor</b>your assets in the zone earn +30% income, everyone else's −18%. Lasts 5 rounds. Once per term it cancels a confiscation of one of your assets in that zone</div>
     <div class="cell"><b>Gov contract</b>guaranteed income $26–40K/round, requires influence</div>
     <div class="cell"><b>Buy an inspector</b>−25% chance of evidence against you, 3 rounds</div>
     <div class="cell"><b>Lobbying</b>white money → influence</div>
@@ -235,16 +257,28 @@
     <div class="cell"><b>Order an audit</b>freezes a rival's asset for 2 rounds. 40% chance the victim finds out who ordered it</div>
     <div class="cell"><b>Raid / arson</b>−30% value of a rival's asset, unless blocked by protection</div>
     <div class="cell"><b>Protection</b>shields your assets from raids and cuts unrest losses by 65%</div>
-    <div class="cell"><b>Hostile takeover (seize)</b>needs ALL conditions at once: the asset is raid-damaged, you own the mayor of that zone, and you have enough influence (6) + cash ($130K) + 2 action points</div>
+    <div class="cell"><b>Hostile takeover (seize)</b>needs ALL conditions at once: the asset is raid-damaged, you have your own protection and own the mayor of that zone, the owner has no protection, the asset is not mortgaged, and you have enough influence (6) + cash ($130K) + 2 action points. In the game each condition is green (met) or red (missing)</div>
   </div>
+
+  <h2>Mortgage, auction and trading</h2>
+  <ul>
+    <li><b>Mortgage</b> — the bank pays <b>85% of the asset's current value</b> in cash. You keep the asset, but while it is mortgaged:
+      it earns nothing and cannot be sold, traded, auctioned or seized. Redeeming costs
+      <b>the loan + 25%</b> (cash and white money count 1:1).</li>
+    <li><b>Auction</b> — you can put your own (unmortgaged) asset up for auction: other players bid with white money, the winner pays
+      you and gets the asset. No bids — you keep it.</li>
+    <li><b>Trading</b> — replaces forced buyouts: offer the owner money and/or your own asset. The deal happens only if the owner accepts.</li>
+    <li><b>Off the books</b> — converts white money into cash at 85%.</li>
+  </ul>
 
   <h2>Investigation</h2>
   <p>Every dirty action can leave evidence. At <b>3 pieces of evidence</b> a case opens — 3 rounds
   to settle it:</p>
   <ul>
     <li><b>Pay off the prosecutor</b> — pay cash, evidence and heat drop.</li>
-    <li><b>Snitch on a partner</b> — your evidence resets and heat −30, but reputation −15,
-      and the one you snitched on learns who did it.</li>
+    <li><b>Snitch on a partner</b> — your evidence resets and heat −30, but reputation −15;
+      the target gets +2 evidence and +20 heat and learns who did it. The price: you lose your protection
+      (cannot hire a new one for 3 rounds) and one crime business; with none, you pay the gangsters $40K cash.</li>
     <li>Did nothing — confiscation of your most valuable asset (unless offshore), a fine and
       1 round in jail.</li>
   </ul>

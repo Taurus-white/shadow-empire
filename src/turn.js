@@ -68,7 +68,7 @@ function propertyValue(room, pid, valueFn) {
   let v = 0;
   for (const p of B.PROPS) {
     const st = room.assets[p.id];
-    if (st?.owner === pid) v += valueFn(p, room);
+    if (st?.owner === pid) v += valueFn(p, room) - (st.mortgage ? st.mortgage.loan : 0);
   }
   return v;
 }
@@ -97,8 +97,10 @@ function chargeOrSell(room, p, amount, valueFn, log) {
     if (!owned.length) break;
     const asset = owned[0];
     const rate = 0.45 + Math.max(0, Math.min(100, p.rep)) / 100 * 0.45;
-    const price = Math.round(valueFn(asset, room) * rate);
+    const mort = room.assets[asset.id].mortgage;
+    const price = Math.max(0, Math.round(valueFn(asset, room) * rate) - (mort ? mort.loan : 0));
     delete room.assets[asset.id].owner;
+    delete room.assets[asset.id].mortgage;
     p.white += price; sold.push({ id: asset.id, price, rate });
     const take2 = Math.min(p.white, need);
     p.white -= take2; need -= take2;
