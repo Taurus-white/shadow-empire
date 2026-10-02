@@ -4,6 +4,7 @@ const path = require('path');
 const { WebSocketServer } = require('ws');
 const world = require('./world');
 const G = require('./game');
+const STATS = require('./leaderboard');
 const AG = require('./agents');
 
 const PORT = process.env.PORT || 3000;
@@ -70,6 +71,96 @@ const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://x');
   if (req.method === 'OPTIONS') { res.writeHead(204, { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS' }); return res.end(); }
   if (u.pathname.startsWith('/api/agent/')) { if (await agentApi(req, res, u) !== false) return; }
+
+  if (u.pathname === '/api/leaderboard' && req.method === 'GET') {
+    const limit = Math.min(
+      100,
+      Math.max(1, Number(u.searchParams.get('limit')) || 50)
+    );
+
+    res.writeHead(200, {
+      'content-type': 'application/json; charset=utf-8',
+      'cache-control': 'no-store'
+    });
+
+    return res.end(JSON.stringify({
+      ok: true,
+      rows: typeof STATS.getPvpLeaderboard === 'function'
+        ? STATS.getPvpLeaderboard(limit)
+        : []
+    }));
+  }
+
+  if (u.pathname === '/api/testing-stats' && req.method === 'GET') {
+    res.writeHead(200, {
+      'content-type': 'application/json; charset=utf-8',
+      'cache-control': 'no-store'
+    });
+
+    return res.end(JSON.stringify({
+      ok: true,
+      rows: typeof STATS.getTestingStats === 'function'
+        ? STATS.getTestingStats(100)
+        : []
+    }));
+  }
+
+  if (u.pathname === '/api/bug-report' && req.method === 'POST') {
+    const body = await readBody(req);
+    const text = String(body.text || '').trim();
+
+    if (!text) {
+      res.writeHead(400, {
+        'content-type': 'application/json; charset=utf-8'
+      });
+
+      return res.end(JSON.stringify({
+        ok: false,
+        error: 'Empty report'
+      }));
+    }
+
+    if (typeof STATS.addBugReport !== 'function') {
+      res.writeHead(500, {
+        'content-type': 'application/json; charset=utf-8'
+      });
+
+      return res.end(JSON.stringify({
+        ok: false,
+        error: 'Bug report storage is not configured'
+      }));
+    }
+
+    try {
+      const report = STATS.addBugReport({
+        ...body,
+        text,
+        ip: req.socket.remoteAddress || ''
+      });
+
+      res.writeHead(200, {
+        'content-type': 'application/json; charset=utf-8'
+      });
+
+      return res.end(JSON.stringify({
+        ok: true,
+        id: report.id,
+        createdAt: report.createdAt
+      }));
+    } catch (error) {
+      console.error('[bug-report]', error);
+
+      res.writeHead(500, {
+        'content-type': 'application/json; charset=utf-8'
+      });
+
+      return res.end(JSON.stringify({
+        ok: false,
+        error: 'Could not save report'
+      }));
+    }
+  }
+
   if (u.pathname === '/api/world') {
     res.writeHead(200, { 'content-type': 'application/json' });
     return res.end(JSON.stringify(world.snapshot()));
@@ -150,6 +241,8 @@ wss.on('connection', (ws) => {
       const pid = m.pid || ('p' + Math.random().toString(36).slice(2, 9));
       c.pid = pid;
       const name = (m.name || 'Игрок').toString().slice(0, 18);
+      const wallet = (m.wallet || '').toString().trim();
+      const validWallet = /^0x[a-fA-F0-9]{40}$/.test(wallet) ? wallet : '';
       nameByPid.set(pid, name);
       pfpByPid.set(pid, m.pfp || null);
       // Если партия уже закончена — стартуем новую (чистая хроника, свежий стол)
@@ -171,7 +264,7 @@ wss.on('connection', (ws) => {
           G.log(room, `${bn} уступает место живому игроку`, 'join');
         }
       }
-      G.addPlayer(room, pid, name, false, m.pfp || null);
+      G.addPlayer(room, pid, name, false, m.pfp || null, validWallet);
       // добиваем ботами только до 4 участников — только если комната создана с ботами
       if (room.withBots) {
         const humans = room.order.filter(id => !room.players[id].isBot).length;

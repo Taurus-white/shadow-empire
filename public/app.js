@@ -29,6 +29,9 @@ const DICT = {
     stInsider: n => `📋 Инспектор: ${n} кр.`, stDamaged: (nm, n) => `🔥 Последствия рейда · ${nm}: ${n} кр.`, stFrozen: (nm, n) => `🧊 Проверка · ${nm}: ${n} кр.`,
     stLock: n => `🚫 Крышу нанять нельзя: ${n} кр.`, stCase: n => `📢 Дело: ${n} кр.`, stJail: n => `⛓️ Тюрьма: ${n} ход.`, stSkip: n => `⏭️ Пропуск ходов: ${n}`,
     loadingLive: 'загрузка живых данных…',
+    walletPh: 'BSC-кошелёк (0x...)',
+    walletHint: 'Адрес нужен для будущих бейджей и REBBE47-дропа. Приватный ключ не вводи.',
+    walletBad: 'Адрес должен начинаться с 0x и содержать 40 символов после него.',
     namePh: 'Твоё имя / псевдоним',
     enter: 'Войти в дело',
     rulesBtn: 'Правила игры',
@@ -155,6 +158,9 @@ const DICT = {
     stInsider: n => `📋 Inspector: ${n} laps`, stDamaged: (nm, n) => `🔥 Raid aftermath · ${nm}: ${n} laps`, stFrozen: (nm, n) => `🧊 Audit · ${nm}: ${n} laps`,
     stLock: n => `🚫 Cannot hire protection: ${n} laps`, stCase: n => `📢 Case: ${n} laps`, stJail: n => `⛓️ Jail: ${n} turns`, stSkip: n => `⏭️ Skipped turns: ${n}`,
     loadingLive: 'loading live data…',
+    walletPh: 'BSC wallet (0x...)',
+    walletHint: 'This address is for future badges and the REBBE47 drop. Never enter your private key.',
+    walletBad: 'The address must start with 0x and contain 40 characters after it.',
     namePh: 'Your name / alias',
     enter: 'Enter the business',
     rulesBtn: 'Rules',
@@ -278,6 +284,7 @@ function applyStaticI18n() {
   document.documentElement.lang = LANG;
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
   document.querySelectorAll('.langsw .lg').forEach(b => b.classList.toggle('active', b.dataset.lang === LANG));
 }
 const zn = z => (LANG === 'en' && z.nameEn) ? z.nameEn : z.name;
@@ -452,6 +459,8 @@ function logText(e) {
 document.querySelectorAll('.langsw .lg').forEach(b => b.onclick = () => {
   LANG = b.dataset.lang; localStorage.setItem('se_lang', LANG);
   applyStaticI18n();
+  renderGateTicker();
+  if (!gateWorld) loadGateWorld();
   if (S) render();
   // список комнат на экране входа (gate) рендерится отдельно от render() и раньше
   // не перестраивался при смене языка — из-за этого «нет открытых комнат» оставалось на RU.
@@ -500,7 +509,17 @@ let ROOM = { id: joinRoomId || 'main', isPublic: true, withBots: !joinRoomId, ti
 
 function enterGame() {
   const name = ($('nameInput').value || window.bash.user?.username || 'Player').trim().slice(0, 18);
+  const walletInput = $('walletInput');
+  const wallet = (walletInput?.value || localStorage.getItem('se_wallet') || '').trim();
+
+  if (wallet && !/^0x[a-fA-F0-9]{40}$/.test(wallet)) {
+    alert(t('walletBad'));
+    walletInput?.focus();
+    return;
+  }
+
   localStorage.setItem('se_name', name);
+  if (wallet) localStorage.setItem('se_wallet', wallet);
   $('gate').classList.add('hidden');
   $('app').classList.remove('hidden');
   connect(name);
@@ -556,6 +575,7 @@ function connect(name) {
   ws = new WebSocket(`${proto}://${location.host}`);
   ws.onopen = () => ws.send(JSON.stringify({
     type: 'join', pid: PID, name,
+    wallet: localStorage.getItem('se_wallet') || '',
     pfp: window.bash.user?.pfp || null,
     roomId: ROOM.id, isPublic: ROOM.isPublic, withBots: ROOM.withBots, title: ROOM.title,
   }));
@@ -595,15 +615,22 @@ function updateShareLink() {
   if (bar) bar.insertBefore(btn, bar.querySelector('.net'));
 }
 
-$('nameInput').value = localStorage.getItem('se_name') || '';
+const walletField = document.getElementById('walletInput');
+if (walletField) walletField.value = localStorage.getItem('se_wallet') || '';
 
-fetch('/api/world').then(r => r.json()).then(w => {
-  const ms = Object.values(w.markets || {}).filter(m => m.price);
+let gateWorld = null;
+function renderGateTicker() {
+  if (!gateWorld) return;
+  const ms = Object.values(gateWorld.markets || {}).filter(m => m.price);
   if (!ms.length) return;
   $('gateTicker').innerHTML = ms.slice(0, 4).map(m =>
     `${mn(m)}: <b>${m.price}</b> <span class="${m.delta >= 0 ? 'up' : 'down'}">${pct(m.delta)}</span>`).join(' · ')
-    + `<br><span style="color:#5a5a66">${t('updated', new Date(w.ts).toLocaleTimeString())}</span>`;
-}).catch(() => {});
+    + `<br><span style="color:#5a5a66">${t('updated', new Date(gateWorld.ts).toLocaleTimeString())}</span>`;
+}
+function loadGateWorld() {
+  fetch('/api/world').then(r => r.json()).then(w => { gateWorld = w; renderGateTicker(); }).catch(() => {});
+}
+loadGateWorld();
 
 document.querySelectorAll('.tb').forEach(b => b.onclick = () => {
   document.querySelectorAll('.tb').forEach(x => x.classList.remove('active'));
@@ -1636,3 +1663,267 @@ setInterval(() => {
   const mt = document.querySelector('#tab-board .matchtimer');
   if (mt) mt.textContent = matchTimerText();
 }, 250);
+
+/* SE-CURRENT-UI-FIX */
+(function () {
+  const isEnglish = () =>
+    typeof LANG !== 'undefined' && LANG === 'en';
+
+  const text = key => {
+    const ru = {
+      rank: 'Рейтинг',
+      bug: 'Сообщить об ошибке',
+      wallet: 'BSC-кошелёк (0x...)',
+      hint: 'Адрес нужен для будущих бейджей и дропа REBBE47. Приватный ключ не вводи.',
+      title: 'Таблица лидеров',
+      close: 'Закрыть',
+      empty: 'Пока нет завершённых PvP-партий.',
+      save: 'Сохранить',
+      placeholder: 'Что случилось? Что ожидалось?',
+      saved: 'Отчёт сохранён: '
+    };
+
+    const en = {
+      rank: 'Leaderboard',
+      bug: 'Report a bug',
+      wallet: 'BSC wallet (0x...)',
+      hint: 'This address is for future badges and the REBBE47 drop. Never enter your private key.',
+      title: 'Leaderboard',
+      close: 'Close',
+      empty: 'No finished PvP matches yet.',
+      save: 'Save',
+      placeholder: 'What happened? What did you expect?',
+      saved: 'Report saved: '
+    };
+
+    return (isEnglish() ? en : ru)[key];
+  };
+
+  function addWalletField() {
+    const nameInput = document.getElementById('nameInput');
+
+    if (!nameInput || document.getElementById('seWalletBlock') || document.getElementById('walletInput')) {
+      return;
+    }
+
+    const block = document.createElement('div');
+    block.id = 'seWalletBlock';
+    block.style.cssText = 'margin-top:8px;width:100%';
+
+    const input = document.createElement('input');
+    input.id = 'walletInput';
+    input.type = 'text';
+    input.maxLength = 42;
+    input.autocomplete = 'off';
+    input.style.cssText = 'width:100%;box-sizing:border-box';
+    input.value = localStorage.getItem('se_wallet') || '';
+
+    const hint = document.createElement('div');
+    hint.id = 'walletHint';
+    hint.style.cssText = 'font-size:11px;opacity:.7;margin-top:4px';
+
+    block.appendChild(input);
+    block.appendChild(hint);
+    nameInput.insertAdjacentElement('afterend', block);
+
+    function updateWalletText() {
+      input.placeholder = text('wallet');
+      hint.textContent = text('hint');
+    }
+
+    updateWalletText();
+
+    document.querySelectorAll('[data-lang]').forEach(button => {
+      button.addEventListener('click', () => {
+        setTimeout(updateWalletText, 0);
+      });
+    });
+  }
+
+  function addHeaderButtons() {
+    const rulesLink = document.querySelector('.rules-link');
+    const bar = rulesLink && rulesLink.parentElement;
+
+    if (!bar || document.getElementById('seCurrentRankButton')) {
+      return;
+    }
+
+    const rank = document.createElement('button');
+    rank.id = 'seCurrentRankButton';
+    rank.type = 'button';
+    rank.textContent = '🏆';
+    rank.title = text('rank');
+    rank.className = 'rules-link';
+    rank.style.cssText =
+      'background:none;border:0;cursor:pointer;font:inherit;padding:0 4px';
+
+    const bug = document.createElement('button');
+    bug.id = 'seCurrentBugButton';
+    bug.type = 'button';
+    bug.textContent = '🐞';
+    bug.title = text('bug');
+    bug.className = 'rules-link';
+    bug.style.cssText =
+      'background:none;border:0;cursor:pointer;font:inherit;padding:0 4px';
+
+    rank.onclick = async () => {
+      if (typeof openSheet !== 'function') return;
+
+      openSheet(
+        '<div class="sh-title">🏆 ' +
+        text('title') +
+        '</div><div class="mini">Loading...</div>'
+      );
+
+      try {
+        const response = await fetch('/api/leaderboard?limit=50', {
+          cache: 'no-store'
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || ('HTTP ' + response.status));
+        }
+
+        const rows = data.rows || [];
+
+        const body = rows.length
+          ? rows.map((row, index) => `
+              <tr>
+                <td>${index + 1}</td>
+                <td>${String(row.name || '').replace(/</g, '&lt;')}</td>
+                <td>${row.games || 0}</td>
+                <td>${Number(row.best || 0).toLocaleString()}</td>
+                <td>${Number(row.total || 0).toLocaleString()}</td>
+              </tr>
+            `).join('')
+          : `
+              <tr>
+                <td colspan="5">${text('empty')}</td>
+              </tr>
+            `;
+
+        openSheet(`
+          <div class="sh-title">🏆 ${text('title')}</div>
+          <div style="overflow:auto">
+            <table style="width:100%;border-collapse:collapse">
+              <tr>
+                <th>#</th>
+                <th>${isEnglish() ? 'Nick' : 'Ник'}</th>
+                <th>${isEnglish() ? 'Games' : 'Партий'}</th>
+                <th>${isEnglish() ? 'Best match' : 'Рекорд партии'}</th>
+                <th>${isEnglish() ? 'Total capital' : 'Общий капитал'}</th>
+              </tr>
+              ${body}
+            </table>
+          </div>
+          <div class="rowbtns">
+            <button class="btn" id="seCloseRank">
+              ${text('close')}
+            </button>
+          </div>
+        `);
+
+        document.getElementById('seCloseRank').onclick = closeSheet;
+      } catch (error) {
+        openSheet(
+          '<div class="sh-title">🏆 ' +
+          text('title') +
+          '</div><div class="mini">' +
+          error.message +
+          '</div>'
+        );
+      }
+    };
+
+    bug.onclick = () => {
+      if (typeof openSheet !== 'function') return;
+
+      openSheet(`
+        <div class="sh-title">🐞 ${text('bug')}</div>
+        <div class="mini">${isEnglish() ? 'Describe what went wrong. The report is saved on the game server.' : 'Опиши, что пошло не так. Отчёт сохранится на сервере.'}</div>
+        <textarea
+          id="seCurrentBugText"
+          rows="6"
+          maxlength="20000"
+          placeholder="${text('placeholder')}"
+          style="width:100%;box-sizing:border-box;margin:10px 0"
+        ></textarea>
+        <div id="seCurrentBugStatus" class="mini"></div>
+        <div class="rowbtns">
+          <button class="btn primary" id="seCurrentBugSave">
+            ${text('save')}
+          </button>
+          <button class="btn" id="seCurrentBugClose">
+            ${text('close')}
+          </button>
+        </div>
+      `);
+
+      document.getElementById('seCurrentBugClose').onclick = closeSheet;
+
+      document.getElementById('seCurrentBugSave').onclick = async () => {
+        const status = document.getElementById('seCurrentBugStatus');
+        const report = document.getElementById('seCurrentBugText').value.trim();
+
+        if (!report) {
+          status.textContent = isEnglish()
+            ? 'Describe the problem first.'
+            : 'Сначала опиши ошибку.';
+          return;
+        }
+
+        try {
+          const response = await fetch('/api/bug-report', {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json'
+            },
+            body: JSON.stringify({
+              text: report,
+              nickname: localStorage.getItem('se_name') || '',
+              language: isEnglish() ? 'en' : 'ru',
+              userAgent: navigator.userAgent
+            })
+          });
+
+          const data = await response.json();
+
+          if (!response.ok || !data.ok) {
+            throw new Error(data.error || ('HTTP ' + response.status));
+          }
+
+          status.textContent = text('saved') + data.id;
+        } catch (error) {
+          status.textContent = error.message;
+        }
+      };
+    };
+
+    bar.insertBefore(rank, rulesLink);
+    bar.insertBefore(bug, rulesLink);
+
+    document.querySelectorAll('[data-lang]').forEach(button => {
+      button.addEventListener('click', () => {
+        setTimeout(() => {
+          rank.title = text('rank');
+          bug.title = text('bug');
+        }, 0);
+      });
+    });
+  }
+
+  function install() {
+    addWalletField();
+    addHeaderButtons();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', install, {
+      once: true
+    });
+  } else {
+    install();
+  }
+})();

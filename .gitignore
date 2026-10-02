@@ -1,0 +1,11 @@
+
+data/
+.env
+node_modules/
+data/
+backup-*/
+*.bak
+*.before-*
+*.py
+fix-*/
+*.bak.*

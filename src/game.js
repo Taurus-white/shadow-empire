@@ -5,6 +5,7 @@
 const world = require('./world');
 const B = require('./board');
 const TURN = require('./turn');
+const STATS = require('./leaderboard');
 
 const CFG = {
   rollMs: TURN.T.rollMs,       // 10 сек на бросок
@@ -161,9 +162,9 @@ function log(room, kind, meta = {}) {
   if (room.log.length > 120) room.log.pop();
 }
 
-function newPlayer(id, name, isBot = false) {
+function newPlayer(id, name, isBot = false, pfp = null, wallet = '') {
   return {
-    id, name, isBot,
+    id, name, isBot, pfp, wallet,
     white: CFG.startWhite, black: CFG.startBlack, influence: CFG.startInfluence,
     heat: 0, evidence: 0, rep: 50, ap: CFG.apPerRound,
     protection: false, protectionLock: 0, insider: 0, offshore: false,
@@ -214,9 +215,12 @@ function payRent(room, payerId, asset, amount) {
   return { paid, converted, unpaid };
 }
 
-function addPlayer(room, id, name, isBot = false, pfp = null) {
-  if (room.players[id]) return room.players[id];
-  const p = newPlayer(id, name, isBot);
+function addPlayer(room, id, name, isBot = false, pfp = null, wallet = '') {
+  if (room.players[id]) {
+    if (!room.players[id].wallet && wallet) room.players[id].wallet = wallet;
+    return room.players[id];
+  }
+  const p = newPlayer(id, name, isBot, pfp, wallet);
   p.pfp = pfp;
   room.players[id] = p;
   room.order.push(id);
@@ -321,6 +325,7 @@ function checkWin(room) {
     .sort((a, b) => b.nw - a.nw);
   room.finished = true;
   room.winner = rank[0].id;
+  saveRoomStats(room);
   if (room.diceOracle) room.diceOracle.revealed = room.diceOracle.seed;
   log(room, 'win', { key: 'log_win_time', params: { amt: rank[0].nw }, actorId: rank[0].id });
 }
@@ -985,8 +990,32 @@ function endRound(room) {
   checkWin(room);
 }
 
+
+function saveRoomStats(room) {
+  if (!room || room.statsSaved) return;
+
+  try {
+    const players = room.order
+      .map(id => room.players[id])
+      .filter(Boolean)
+      .map(player => ({
+        id: player.id,
+        name: player.name,
+        isBot: !!player.isBot,
+        netWorth: netWorth(room, player)
+      }));
+
+    if (typeof STATS.recordMatch === 'function') {
+      STATS.recordMatch(room, players);
+    }
+  } catch (error) {
+    console.error('[stats]', error.message);
+  }
+}
+
 function finish(room) {
   room.finished = true;
+  saveRoomStats(room);
   const rank = room.order.map(id => room.players[id]).sort((a, b) => netWorth(room, b) - netWorth(room, a));
   log(room, 'win', { key: 'log_game_over', actorId: rank[0]?.id });
 }
@@ -1139,7 +1168,9 @@ function view(room, pid) {
       // ранг (тир от 1 до 5 к цели), чтобы рейтинг игроков оставался осмысленным.
       const tier = Math.max(1, Math.min(5, Math.ceil((nw / CFG.winGoal) * 5)));
       return {
-        id, name: p.name, isBot: p.isBot, pfp: p.pfp, heat: p.heat, rep: p.rep,
+        id, name: p.name, isBot: p.isBot, pfp: p.pfp,
+        wallet: isMe ? (p.wallet || '') : '',
+        heat: p.heat, rep: p.rep,
         evidence: p.evidence, caseOpen: p.caseOpen, jailed: p.jailed, protection: !!p.protection,
         netWorth: nw,   // капитал в деньгах виден всем — чтобы отстающие видели разрыв и вовремя сдавались
         tier,                          // остальным — только качественный ранг
